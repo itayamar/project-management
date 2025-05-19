@@ -1,13 +1,11 @@
 const PRODUCTS_BASE_URL = '/api/projects/';
 
 async function fetchProjects(page=1, limit=20) {
-    console.log('HERE 2')
     const url = `${PRODUCTS_BASE_URL}?page=${page}&limit=${limit}`;
     const response = await fetch(url)
     if (!response.ok) throw new Error('Failed to fetch projects')
 
     const projectsData = await response.json()
-    console.log('project sData', projectsData)
     return projectsData
 }
 

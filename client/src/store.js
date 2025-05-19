@@ -1,6 +1,6 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import projects from "./views/projects/projects.js";
+import project from "./views/projects/project.js";
 
 Vue.use(Vuex);
 
@@ -14,7 +14,7 @@ export default new Vuex.Store({
     error: null
   },
   modules: {
-    projects,
+    project,
   },
   mutations: {
     SET_LOADING(state, { type, value }) {

@@ -3,6 +3,7 @@ import Vue from "vue";
 import {fetchProjects, createProject, updateProject, fetchProject, deleteProject} from "@/services/projects";
 
 export default {
+  namespaced: true,
   state: {
     projects: [],
     currentProject: null,
@@ -32,7 +33,7 @@ export default {
     }
   },
   actions: {
-    async fetchProjects({ commit }, {page=1, limit=20}) {
+    async fetchProjects({ commit }, {page=1, limit=20} = {}) {
       try {
         commit('SET_LOADING', { type: 'projects', value: true })
         commit('SET_ERROR', null)
