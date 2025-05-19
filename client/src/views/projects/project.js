@@ -35,15 +35,15 @@ export default {
   actions: {
     async fetchProjects({ commit }, {page=1, limit=20} = {}) {
       try {
-        commit('SET_LOADING', { type: 'projects', value: true })
-        commit('SET_ERROR', null)
+        commit('SET_LOADING', { type: 'projects', value: true }, { root: true })
+        commit('SET_ERROR', null, { root: true })
         const projectsData = await fetchProjects(page, limit)
         commit('SET_PROJECTS', projectsData.projects)
         commit('SET_TOTAL_PROJECTS', projectsData.total)
       } catch (error) {
-        commit('SET_ERROR', error.message)
+        commit('SET_ERROR', error.message, { root: true })
       } finally {
-        commit('SET_LOADING', { type: 'projects', value: false })
+        commit('SET_LOADING', { type: 'projects', value: false }, { root: true })
       }
     },
     async fetchProject({ commit }, projectId) {
