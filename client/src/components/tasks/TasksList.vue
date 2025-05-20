@@ -3,21 +3,42 @@
     <div class="header-section">
       <h3 class="section-title">Tasks</h3>
       <button class="btn btn-add" @click="openCreateTaskModal">
-        <span class="btn-icon">+</span>Add Task
+        ➕ Add Task
       </button>
     </div>
 
     <!-- Task filter controls -->
-    <div class="filter-controls mb-4">
-      <button
+    <div class="filters-section">
+      <div class="search-box">
+        <input 
+          type="text" 
+          :value="searchQuery"
+          @input="handleSearch($event.target.value)"
+          placeholder="Search tasks..."
+        >
+      </div>
+
+      <div class="status-tabs">
+        <button
           v-for="(label, status) in statusFilters"
           :key="status"
-          class="btn btn-small"
-          :class="currentFilter === status ? 'btn-primary' : 'btn-secondary'"
+          class="status-tab"
+          :class="{
+            'active': currentFilter === status,
+            'tab-created': status === 'CREATED',
+            'tab-progress': status === 'IN_PROGRESS',
+            'tab-completed': status === 'COMPLETED',
+            'tab-archived': status === 'ARCHIVED'
+          }"
           @click="filterTasks(status)"
-      >
-        {{ label }}
-      </button>
+        >
+          <span class="status-icon" v-if="status !== 'ALL'">●</span>
+          {{ label }}
+          <span class="task-count" v-if="status !== 'ALL'">
+            {{ getTaskCountByStatus(status) }}
+          </span>
+        </button>
+      </div>
     </div>
 
     <!-- Loading state -->
@@ -49,34 +70,48 @@
           class="task-card"
           :class="{'past-due': isPastDue(task)}"
       >
-        <div class="task-card-content">
-          <div class="task-header">
-            <span
-                class="badge"
-                :class="getStatusClass(task.state)"
+        <div class="task-card-header">
+          <div class="task-status">
+            <div
+                class="status-select-wrapper"
+                :style="{ backgroundColor: getStatusBgColor(task.state) }"
             >
-              {{ formatStatusLabel(task.state) }}
-            </span>
-            <span class="task-due-date" :class="{'text-red': isPastDue(task)}">
-              Due: {{ formatDate(task.dueDate) }}
+              <select
+                  v-model="task.state"
+                  @change="handleStatusChange(task)"
+                  class="status-select"
+              >
+                <option value="CREATED">Created</option>
+                <option value="IN_PROGRESS">In Progress</option>
+                <option value="COMPLETED">Completed</option>
+                <option value="ARCHIVED">Archived</option>
+              </select>
+              <span class="select-icon">▼</span>
+            </div>
+            <span class="task-due-date" :class="{'text-danger': isPastDue(task)}">
+              Due {{ formatDate(task.dueDate) }}
             </span>
           </div>
-          <p class="task-description"> {{task.description}}</p>
-
-          <p v-if="task.notes" class="task-notes">{{ task.notes }}</p>
-          <p v-else class="task-notes text-gray text-sm">No notes</p>
+          
+          <div class="task-actions">
+            <button class="action-btn edit-btn" @click="editTask(task)" title="Edit task">
+              ✏️
+            </button>
+            <button class="action-btn delete-btn" @click="confirmDeleteTask(task)" title="Delete task">
+              🗑️
+            </button>
+          </div>
         </div>
 
-        <div class="task-actions">
-          <button class="btn btn-secondary btn-small mr-2" @click="editTask(task)">
-            Edit
-          </button>
-          <button class="btn btn-danger btn-small" @click="confirmDeleteTask(task)">
-            Delete
-          </button>
+        <div class="task-card-content">
+          <p class="task-description">{{ task.description }}</p>
+          <p v-if="task.notes" class="task-notes">{{ task.notes }}</p>
+          <p v-else class="task-notes text-muted">No notes</p>
         </div>
       </div>
+
       <pagination
+          v-if="filteredTasks.length"
           :currentPage="currentPage"
           :totalPages="totalTasksPages"
           @page-change="handlePageChange"
@@ -143,7 +178,8 @@ export default {
         ARCHIVED: 'Archived'
       },
       currentPage: 1,
-      limit: 20
+      limit: 20,
+      searchTimeout: null
     }
   },
   computed: {
@@ -164,10 +200,35 @@ export default {
       'isLoading',
       'hasError',
       'errorMessage'
-    ])
+    ]),
+    taskCountsByStatus() {
+      return {
+        CREATED: this.tasks.filter(t => t.state === 'CREATED').length,
+        IN_PROGRESS: this.tasks.filter(t => t.state === 'IN_PROGRESS').length,
+        COMPLETED: this.tasks.filter(t => t.state === 'COMPLETED').length,
+        ARCHIVED: this.tasks.filter(t => t.state === 'ARCHIVED').length
+      }
+    },
+    searchQuery: {
+      get() {
+        return this.$store.state.task.filters.search;
+      },
+      set(value) {
+        this.handleSearch(value);
+      }
+    }
   },
   created() {
     this.loadTasks()
+  },
+  watch: {
+    totalTasks(newTotal) {
+      const totalPages = Math.ceil(newTotal / this.limit)
+      if (this.currentPage > totalPages) {
+        this.currentPage = totalPages || 1
+        this.loadTasks()
+      }
+    }
   },
   methods: {
     ...mapActions('task', {
@@ -336,6 +397,51 @@ export default {
     closeDeleteModal() {
       this.showDeleteModal = false
       this.taskToDelete = null
+    },
+
+    getStatusBgColor(state) {
+      switch (state) {
+        case 'CREATED':
+          return '#007bff'; // blue
+        case 'IN_PROGRESS':
+          return '#ffc107'; // yellow
+        case 'COMPLETED':
+          return '#28a745'; // green
+        case 'ARCHIVED':
+          return '#6c757d'; // gray
+        default:
+          return '#ccc';
+      }
+    },
+    handleStatusChange(task) {
+      this.updateTask({
+        taskId: task._id,
+        taskData: {
+          ...task,
+          state: task.state
+        }
+      }).then(() => {
+        showToast(this.$toasted, 'Task status updated!')
+      }).catch(err => {
+        showToast(this.$toasted, `Error: ${err.message}`, 'error')
+      })
+    },
+    getTaskCountByStatus(status) {
+      return this.taskCountsByStatus[status] || 0
+    },
+    handleSearch(value) {
+      if (this.searchTimeout) {
+        clearTimeout(this.searchTimeout);
+      }
+      
+      const searchValue = typeof value === 'string' ? value : value?.target?.value || '';
+      
+      this.searchTimeout = setTimeout(() => {
+        this.$store.dispatch('task/updateFilters', {
+          projectId: this.projectId,
+          filters: { search: searchValue }
+        });
+      }, 300);
     }
   }
 }
@@ -349,7 +455,7 @@ export default {
 .header-section {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   margin-bottom: 1.5rem;
 }
 
@@ -359,10 +465,104 @@ export default {
   margin: 0;
 }
 
-.filter-controls {
+.filters-section {
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+
+  .search-box {
+    margin-bottom: 1rem;
+
+    input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 15px;
+      transition: all 0.2s ease;
+      background: #f9fafb;
+
+      &:focus {
+        outline: none;
+        border-color: #2563eb;
+        background: white;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+      }
+
+      &::placeholder {
+        color: #9ca3af;
+      }
+    }
+  }
+}
+
+.status-tabs {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 4px;
+  overflow-x: auto;
+  padding-bottom: 1px;
+  
+  /* Hide scrollbar but keep functionality */
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.status-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+
+  &:hover {
+    color: #111827;
+  }
+
+  &.active {
+    color: #111827;
+    border-bottom-color: #2563eb;
+  }
+
+  .status-icon {
+    font-size: 10px;
+  }
+
+  .task-count {
+    background: #e5e7eb;
+    color: #4b5563;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+  }
+
+  &.tab-created {
+    .status-icon { color: #3b82f6; }
+    &.active .task-count { background: #bfdbfe; color: #1e40af; }
+  }
+
+  &.tab-progress {
+    .status-icon { color: #f59e0b; }
+    &.active .task-count { background: #fde68a; color: #92400e; }
+  }
+
+  &.tab-completed {
+    .status-icon { color: #10b981; }
+    &.active .task-count { background: #a7f3d0; color: #065f46; }
+  }
+
+  &.tab-archived {
+    .status-icon { color: #6b7280; }
+    &.active .task-count { background: #e5e7eb; color: #111827; }
+  }
 }
 
 .task-list {
@@ -372,47 +572,190 @@ export default {
 }
 
 .task-card {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   background-color: #fff;
-  border-radius: 0.5rem;
-  padding: 1rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: all 0.2s ease;
 
-  &-content {
-    flex: 1;
+  &:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   }
 
   &.past-due {
-    border-left: 3px solid #ef4444;
+    border-left: 4px solid #ef4444;
   }
 }
 
-.task-header {
+.task-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.task-status {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.5rem;
+  gap: 12px;
+}
+
+.status-select-wrapper {
+  padding: 4px 12px;
+  border-radius: 16px;
+  min-width: 120px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    filter: brightness(1.1);
+
+    .select-icon {
+      transform: translateY(1px);
+    }
+  }
+
+  &:active {
+    filter: brightness(0.95);
+  }
+
+  .select-icon {
+    position: absolute;
+    right: 8px;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 12px;
+    pointer-events: none;
+    transition: transform 0.2s ease;
+  }
+}
+
+.status-select {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.875rem;
+  outline: none;
+  appearance: none;
+  cursor: pointer;
+  width: 100%;
+  padding-right: 24px;
+  z-index: 1;
+  
+  option {
+    background: white;
+    color: #374151;
+    font-weight: 500;
+  }
+
+  &:focus + .select-icon {
+    transform: translateY(2px);
+  }
 }
 
 .task-due-date {
   font-size: 0.875rem;
-  color: #4b5563;
+  color: #6b7280;
 
-  &.text-red {
+  &.text-danger {
     color: #ef4444;
     font-weight: 500;
   }
 }
 
+.task-card-content {
+  padding: 16px;
+}
+
+.task-description {
+  margin: 0 0 8px;
+  font-size: 0.9375rem;
+  color: #111827;
+  line-height: 1.5;
+}
+
 .task-notes {
   margin: 0;
+  font-size: 0.875rem;
+  color: #4b5563;
+  line-height: 1.4;
+
+  &.text-muted {
+    color: #9ca3af;
+    font-style: italic;
+  }
 }
 
 .task-actions {
   display: flex;
+  gap: 8px;
+}
+
+.action-btn {
+  display: flex;
   align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: #f3f4f6;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 16px;
+
+  &:hover {
+    transform: scale(1.05);
+  }
+
+  &.edit-btn {
+    background: #10b981;
+    color: white;
+
+    &:hover {
+      background: #059669;
+    }
+  }
+
+  &.delete-btn {
+    background: #bfa5a5;
+    color: white;
+
+    &:hover {
+      background: #dc2626;
+    }
+  }
+}
+
+@media (max-width: 640px) {
+  .task-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .task-actions {
+    width: 100%;
+    justify-content: flex-end;
+    padding-top: 8px;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  .action-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+  }
+
+  .status-tabs {
+    margin: 0 -1rem;
+    padding: 0 1rem;
+  }
 }
 
 .btn-add {
@@ -428,19 +771,6 @@ export default {
 
   &:hover {
     background: #dbeafe;
-  }
-}
-
-@media (max-width: 640px) {
-  .task-card {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .task-actions {
-    margin-top: 1rem;
-    width: 100%;
-    justify-content: flex-end;
   }
 }
 </style>

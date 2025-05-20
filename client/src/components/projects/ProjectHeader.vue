@@ -8,10 +8,6 @@
       </div>
       <p class="description">{{ project.description }}</p>
     </div>
-
-    <div class="add-task">
-      <button class="btn btn-add" @click="$emit('add-task')">➕ Add Task</button>
-    </div>
   </div>
 </template>
 
@@ -89,26 +85,6 @@ export default {
     font-size: 18px;
     color: #4b5563;
     margin-top: 4px;
-  }
-
-  .add-task {
-    margin-top: 16px;
-
-    .btn-add {
-      padding: 8px 16px;
-      border-radius: 6px;
-      font-weight: 600;
-      font-size: 14px;
-      cursor: pointer;
-      border: none;
-      background: #eff6ff;
-      color: #1d4ed8;
-      transition: background 0.2s ease;
-
-      &:hover {
-        background: #dbeafe;
-      }
-    }
   }
 }
 </style>

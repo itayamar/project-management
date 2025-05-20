@@ -1,7 +1,10 @@
 <template>
   <div class="project-details">
     <div class="header">
-      <button class="btn btn-back" @click="goBack">← Back</button>
+      <button class="btn-back" @click="goBack">
+        <span class="back-icon">←</span>
+        <span class="back-text">Back to Projects</span>
+      </button>
     </div>
 
     <div v-if="isLoading('project')" class="loader-wrapper">
@@ -182,15 +185,31 @@ export default {
 }
 
 .header {
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .btn-back {
-  background: #f3f4f6;
-  color: #374151;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  .back-icon {
+    font-size: 18px;
+    line-height: 1;
+  }
 
   &:hover {
-    background: #e5e7eb;
+    background: #dbeafe;
+    transform: translateX(-2px);
   }
 }
 

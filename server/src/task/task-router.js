@@ -19,6 +19,16 @@ router
                 filter.projectId = req.query.projectId;
             }
 
+            // Add search functionality
+            const search = req.query.search;
+            if (search && typeof search === 'string' && search.trim()) {
+                const searchRegex = new RegExp(search.trim(), 'i');
+                filter.$or = [
+                    { description: searchRegex },
+                    { notes: searchRegex }
+                ];
+            }
+
             const [tasks, total] = await Promise.all([
                 Task.find(filter).skip(skip).limit(limit).lean(),
                 Task.countDocuments(filter)

@@ -13,6 +13,11 @@ export default {
         tasks: [],
         currentTask: null,
         totalTasks: 0,
+        filters: {
+            search: '',
+            page: 1,
+            limit: 20
+        }
     },
     mutations: {
         SET_TASKS(state, tasks) {
@@ -36,14 +41,38 @@ export default {
         SET_TOTAL_TASKS(state, total) {
             state.totalTasks = total;
         },
+        SET_FILTERS(state, filters) {
+            state.filters = { ...state.filters, ...filters };
+        },
+        RESET_FILTERS(state) {
+            state.filters = {
+                search: '',
+                page: 1,
+                limit: 20
+            };
+        }
     },
     actions: {
-        async fetchTasks({ commit }, { projectId, page = 1, limit = 20 } = {}) {
+        async fetchTasks({ commit, state }, { projectId, page, limit, search } = {}) {
             commit("SET_LOADING", { type: "tasks", value: true }, { root: true });
             commit("SET_ERROR", null, { root: true });
 
             try {
-                const data = await fetchTasks(projectId, page, limit); // Expected format: { tasks: [], total: number }
+                // Use existing filter values if not provided
+                const params = {
+                    projectId,
+                    page: page || state.filters.page,
+                    limit: limit || state.filters.limit,
+                    search: search !== undefined ? search : state.filters.search
+                };
+
+                const data = await fetchTasks(
+                    params.projectId,
+                    params.page,
+                    params.limit,
+                    params.search
+                );
+                
                 commit("SET_TASKS", data.tasks);
                 commit("SET_TOTAL_TASKS", data.total);
             } catch (error) {
@@ -51,6 +80,22 @@ export default {
             } finally {
                 commit("SET_LOADING", { type: "tasks", value: false }, { root: true });
             }
+        },
+
+        updateFilters({ commit, dispatch }, { projectId, filters = {} }) {
+            // Reset to page 1 when filters change (except when explicitly changing page)
+            const newFilters = { ...filters };
+            if (!('page' in filters)) {
+                newFilters.page = 1;
+            }
+            
+            commit('SET_FILTERS', newFilters);
+            return dispatch('fetchTasks', { projectId });
+        },
+
+        resetFilters({ commit, dispatch }, { projectId }) {
+            commit('RESET_FILTERS');
+            return dispatch('fetchTasks', { projectId });
         },
 
         async fetchTask({ commit }, taskId) {

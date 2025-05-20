@@ -1,7 +1,17 @@
 const TASKS_BASE_URL = '/api/tasks/';
 
-async function fetchTasks(projectId, page = 1, limit = 20) {
-    const url = `${TASKS_BASE_URL}?projectId=${projectId}&page=${page}&limit=${limit}`;
+async function fetchTasks(projectId, page = 1, limit = 20, search = '') {
+    const params = new URLSearchParams({
+        projectId,
+        page: page.toString(),
+        limit: limit.toString()
+    });
+
+    if (search && typeof search === 'string' && search.trim()) {
+        params.append('search', search.trim());
+    }
+
+    const url = `${TASKS_BASE_URL}?${params.toString()}`;
     const response = await fetch(url);
 
     if (!response.ok) throw new Error('Failed to fetch tasks');

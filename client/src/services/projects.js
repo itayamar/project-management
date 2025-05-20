@@ -1,12 +1,28 @@
 const PRODUCTS_BASE_URL = '/api/projects/';
 
-async function fetchProjects(page=1, limit=20) {
-    const url = `${PRODUCTS_BASE_URL}?page=${page}&limit=${limit}`;
-    const response = await fetch(url)
-    if (!response.ok) throw new Error('Failed to fetch projects')
+async function fetchProjects({ page = 1, limit = 20, search = '', status = '' } = {}) {
+    const params = new URLSearchParams();
+    
+    // Add pagination parameters
+    params.append('page', page);
+    params.append('limit', limit);
+    
+    // Add search parameter if not empty
+    if (search?.trim()) {
+        params.append('search', search.trim());
+    }
+    
+    // Add status parameter if not empty
+    if (status?.trim()) {
+        params.append('status', status.trim());
+    }
 
-    const projectsData = await response.json()
-    return projectsData
+    const url = `${PRODUCTS_BASE_URL}?${params.toString()}`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Failed to fetch projects');
+
+    const projectsData = await response.json();
+    return projectsData;
 }
 
 async function fetchProject(projectId) {

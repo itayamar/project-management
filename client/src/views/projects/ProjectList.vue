@@ -1,28 +1,83 @@
 <template>
   <div class="project-list">
-    <h1>Projects</h1>
+    <div class="header-section">
+      <h1>Projects</h1>
+      <button class="btn btn-primary" @click="openAddModal">
+        Create Project
+      </button>
+    </div>
 
-    <button class="btn btn-primary" @click="openAddModal">
-      Add Project
-    </button>
+    <div class="filters-section">
+      <div class="search-box">
+        <input 
+          type="text" 
+          v-model="searchQuery" 
+          placeholder="Search projects..."
+          @input="handleSearch"
+        >
+      </div>
+      
+      <div class="status-tabs">
+        <button
+          v-for="(label, value) in statusFilters"
+          :key="value"
+          class="status-tab"
+          :class="{
+            'active': filters.status === value,
+            'tab-all': value === '',
+            'tab-progress': value === 'in_progress',
+            'tab-completed': value === 'completed'
+          }"
+          @click="updateFilters({ status: value })"
+        >
+          <span class="status-icon" v-if="value">●</span>
+          {{ label }}
+          <span class="count" v-if="value !== ''">
+            {{ getProjectCountByStatus(value) }}
+          </span>
+        </button>
+      </div>
+    </div>
 
     <skelaton-loader v-if="isLoading" :lines="loaderLines" type="card"></skelaton-loader>
+
+    <div v-else-if="!projects.length" class="empty-state">
+      <div class="empty-state-content">
+        <span class="empty-icon">📋</span>
+        <h3>No Projects Found</h3>
+        <p v-if="hasActiveFilters">
+          No projects match your current filters. Try adjusting your search or filter criteria.
+        </p>
+        <p v-else>
+          There are no projects yet. Get started by creating your first project!
+        </p>
+        <button class="btn btn-primary" @click="openAddModal">
+          Create Project
+        </button>
+      </div>
+    </div>
 
     <ul v-else class="project-items">
       <li v-for="project in projects" :key="project._id" class="project-item">
         <div class="project-item-content" @click="openProject(project)">
-          <h3>{{ project.name }}</h3>
+          <h3>
+            {{ project.name }}
+            <span v-if="project.completed" class="badge badge-completed">✔ Completed</span>
+            <span v-else-if="project.inProgress" class="badge badge-inprogress">⏳ In Progress</span>
+            <span v-else class="badge badge-pending">📋 Pending</span>
+          </h3>
           <p>{{ project.description }}</p>
         </div>
 
         <div class="actions">
-          <button @click="openEditModal(project)">Edit</button>
-          <button @click="confirmDelete(project)">Delete</button>
+          <button @click="openEditModal(project)" title="Edit project">✏️</button>
+          <button @click="confirmDelete(project)" title="Delete project">🗑️</button>
         </div>
       </li>
     </ul>
 
     <Pagination
+        v-if="projects.length"
         :currentPage="currentPage"
         :totalPages="totalPages"
         @page-change="handlePageChange"
@@ -70,9 +125,13 @@ export default {
       selectedProject: null,
       isDeleteModalOpen: false,
       projectToDelete: null,
-      currentPage: 1,
-      limit: 10,
-      loaderLines: 2
+      searchTimeout: null,
+      loaderLines: 2,
+      statusFilters: {
+        '': 'All Projects',
+        'in_progress': 'In Progress',
+        'completed': 'Completed'
+      }
     }
   },
   computed: {
@@ -80,19 +139,59 @@ export default {
       projects: state => state.project.projects,
       isLoading: state => state.isLoading,
       totalProjects: state => state.project.totalProjects,
+      filters: state => state.project.filters
     }),
-    totalPages() {
-      return Math.ceil(this.totalProjects / this.limit)
+    searchQuery: {
+      get() {
+        return this.filters.search;
+      },
+      set(value) {
+        this.handleSearch(value);
+      }
     },
+    statusFilter: {
+      get() {
+        return this.filters.status;
+      },
+      set(value) {
+        this.updateFilters({ status: value });
+      }
+    },
+    currentPage: {
+      get() {
+        return this.filters.page;
+      },
+      set(value) {
+        this.handlePageChange(value);
+      }
+    },
+    totalPages() {
+      return Math.ceil(this.totalProjects / this.filters.limit)
+    },
+    hasActiveFilters() {
+      return this.filters.search || this.filters.status;
+    },
+    projectCountsByStatus() {
+      return {
+        'in_progress': this.projects.filter(p => p.inProgress && !p.completed).length,
+        'completed': this.projects.filter(p => p.completed).length
+      }
+    }
   },
   created() {
-    this.fetchProjectsPage(this.currentPage)
+    this.fetchProjects();
   },
   methods: {
-    ...mapActions('project', ['fetchProjects', 'createProject', 'updateProject', 'deleteProject']),
+    ...mapActions('project', [
+      'fetchProjects',
+      'createProject',
+      'updateProject',
+      'deleteProject',
+      'updateFilters',
+      'resetFilters'
+    ]),
 
     openProject(project) {
-
       this.$router.push('/projects/' + project._id)
     },
     openAddModal() {
@@ -146,87 +245,378 @@ export default {
       }
     },
     fetchProjectsPage(page) {
-      this.$store.dispatch('project/fetchProjects', {
-        page,
-        limit: this.limit
-      })
+      this.updateFilters({ page });
+    },
+    handleSearch(value) {
+      if (this.searchTimeout) {
+        clearTimeout(this.searchTimeout);
+      }
+      this.searchTimeout = setTimeout(() => {
+        this.updateFilters({ search: value });
+      }, 300);
     },
     handlePageChange(newPage) {
-      this.currentPage = newPage
-      this.fetchProjectsPage(newPage)
+      this.fetchProjectsPage(newPage);
     },
+    getProjectCountByStatus(status) {
+      return this.projectCountsByStatus[status] || 0
+    }
   }
 }
 </script>
 
 <style scoped>
 .project-list {
-  padding: 24px;
   max-width: 800px;
   margin: 0 auto;
+  padding: 24px;
 }
 
-.loader {
-  text-align: center;
-  margin-top: 30px;
-  font-size: 18px;
+.header-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+
+  h1 {
+    font-size: 32px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+  }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    background: #2563eb;
+    color: white;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: #1d4ed8;
+      transform: translateY(-1px);
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+
+    &::before {
+      content: "+";
+      font-size: 18px;
+      line-height: 1;
+    }
+  }
+}
+
+.filters-section {
+  margin-bottom: 2rem;
+
+  .search-box {
+    margin-bottom: 1rem;
+
+    input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 15px;
+      transition: all 0.2s ease;
+      background: #f9fafb;
+
+      &:focus {
+        outline: none;
+        border-color: #2563eb;
+        background: white;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+      }
+
+      &::placeholder {
+        color: #9ca3af;
+      }
+    }
+  }
 }
 
 .project-items {
   list-style: none;
   padding: 0;
+  display: grid;
+  gap: 1rem;
 }
 
 .project-item {
-  border: 1px solid #ccc;
-  padding: 16px;
-  margin-bottom: 12px;
-  border-radius: 6px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: #d1d5db;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    transform: translateY(-2px);
+  }
 }
 
 .project-item-content {
+  padding: 20px;
   cursor: pointer;
+
+  h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #111827;
+    margin: 0 0 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  p {
+    color: #6b7280;
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
 }
 
-.project-item h3 {
-  margin: 0 0 8px;
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+
+  &-completed {
+    background: #dcfce7;
+    color: #15803d;
+  }
+
+  &-inprogress {
+    background: #fef9c3;
+    color: #854d0e;
+  }
+
+  &-pending {
+    background: #f3f4f6;
+    color: #4b5563;
+  }
 }
 
 .actions {
-  margin-top: 12px;
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 8px;
+  padding: 12px 20px;
+  
+  button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: transparent;
+
+    &:hover {
+      transform: translateY(-1px);
+    }
+
+    &:first-of-type {
+      color: #059669;
+
+      &:hover {
+        background: #f0fdf4;
+      }
+    }
+
+    &:last-of-type {
+      color: #dc2626;
+
+      &:hover {
+        background: #fef2f2;
+      }
+    }
+  }
 }
 
-.actions button {
-  padding: 6px 12px;
-  cursor: pointer;
-  border: none;
-  border-radius: 4px;
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  background: #f9fafb;
+  border-radius: 12px;
+  border: 2px dashed #e5e7eb;
+
+  .empty-state-content {
+    max-width: 400px;
+    margin: 0 auto;
+  }
+
+  .empty-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    display: block;
+  }
+
+  h3 {
+    color: #111827;
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0 0 8px;
+  }
+
+  p {
+    color: #6b7280;
+    font-size: 15px;
+    line-height: 1.5;
+    margin: 0 0 24px;
+  }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 24px;
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: #1d4ed8;
+      transform: translateY(-1px);
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+  }
 }
 
-.actions button:first-of-type {
-  background-color: #007bff;
-  color: white;
+.status-tabs {
+  display: flex;
+  gap: 4px;
+  padding-bottom: 1px;
+  border-bottom: 1px solid #e5e7eb;
+  overflow-x: auto;
+  scrollbar-width: none;
+  
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
-.actions button:last-of-type {
-  background-color: #dc3545;
-  color: white;
-}
-
-.btn {
+.status-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   padding: 8px 16px;
   border: none;
-  border-radius: 4px;
-  margin-bottom: 20px;
-  font-weight: bold;
+  background: transparent;
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+
+  &:hover {
+    color: #111827;
+  }
+
+  &.active {
+    color: #111827;
+    border-bottom-color: #2563eb;
+  }
+
+  .status-icon {
+    font-size: 8px;
+  }
+
+  .count {
+    background: #e5e7eb;
+    color: #4b5563;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+  }
+
+  &.tab-all {
+    &.active .count { 
+      background: #e5e7eb; 
+      color: #111827; 
+    }
+  }
+
+  &.tab-progress {
+    .status-icon { color: #f59e0b; }
+    &.active .count { 
+      background: #fef3c7; 
+      color: #92400e; 
+    }
+  }
+
+  &.tab-completed {
+    .status-icon { color: #10b981; }
+    &.active .count { 
+      background: #d1fae5; 
+      color: #065f46; 
+    }
+  }
 }
 
-.btn-primary {
-  background-color: #28a745;
-  color: white;
+@media (max-width: 640px) {
+  .project-list {
+    padding: 16px;
+  }
+
+  .header-section {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+
+    .btn-primary {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+
+  .project-item-content h3 {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+
+    .badge {
+      align-self: flex-start;
+    }
+  }
+
+  .status-tabs {
+    margin: 0 -1rem;
+    padding: 0 1rem;
+  }
 }
 </style>
