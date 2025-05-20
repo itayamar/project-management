@@ -1,6 +1,7 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import project from "./views/projects/project.js";
+import project from './modules/project'
+import task from './modules/task'
 
 Vue.use(Vuex);
 
@@ -15,6 +16,7 @@ export default new Vuex.Store({
   },
   modules: {
     project,
+    task
   },
   mutations: {
     SET_LOADING(state, { type, value }) {

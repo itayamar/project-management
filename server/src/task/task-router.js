@@ -1,24 +1,54 @@
 import express from "express";
 import { Task } from "./task-model.js";
+import mongoose from 'mongoose';
 
 const router = express.Router();
 const BASE_PATH = "/api/tasks";
 
 router
   .route(BASE_PATH)
-  // find all
-  .get((req, res, next) => {
-    Task.find()
-      .lean()
-      .then((tasks) => res.send(tasks))
-      .catch(next);
-  })
-  // create new
-  .post((req, res, next) => {
-    Task.create(req.body)
-      .then((task) => res.send(task))
-      .catch(next);
-  });
+    // find all with pagination
+    .get(async (req, res, next) => {
+        try {
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 20;
+            const skip = (page - 1) * limit;
+
+            const filter = {};
+            if (req.query.projectId) {
+                filter.projectId = req.query.projectId;
+            }
+
+            const [tasks, total] = await Promise.all([
+                Task.find(filter).skip(skip).limit(limit).lean(),
+                Task.countDocuments(filter)
+            ]);
+
+            res.send({ tasks, total });
+        } catch (err) {
+            next(err);
+        }
+    })
+    // create new
+    .post((req, res, next) => {
+        try {
+            const { description, dueDate, state, notes, projectId } = req.body;
+
+            const taskData = {
+                description,
+                state,
+                notes,
+                dueDate: new Date(dueDate), // convert to Date object
+                projectId: new mongoose.Types.ObjectId(projectId), // convert to ObjectId
+            };
+
+            Task.create(taskData)
+                .then((task) => res.send(task))
+                .catch(next);
+        } catch (err) {
+            next(err);
+        }
+    });
 
 router
   .route(`${BASE_PATH}/search`)

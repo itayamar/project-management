@@ -35,7 +35,6 @@
 
 <script>
 export default {
-  name: 'PaginationBar',
   props: {
     currentPage: {
       type: Number,

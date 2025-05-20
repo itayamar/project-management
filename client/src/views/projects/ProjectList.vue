@@ -6,12 +6,14 @@
       Add Project
     </button>
 
-    <div v-if="isLoading" class="loader">Loading...</div>
+    <skelaton-loader v-if="isLoading" :lines="loaderLines" type="card"></skelaton-loader>
 
     <ul v-else class="project-items">
       <li v-for="project in projects" :key="project._id" class="project-item">
-        <h3>{{ project.name }}</h3>
-        <p>{{ project.description }}</p>
+        <div class="project-item-content" @click="openProject(project)">
+          <h3>{{ project.name }}</h3>
+          <p>{{ project.description }}</p>
+        </div>
 
         <div class="actions">
           <button @click="openEditModal(project)">Edit</button>
@@ -48,9 +50,10 @@
 
 <script>
 import { mapState, mapActions } from 'vuex'
-import ProjectModal from '@/components/modals/ProjectModal.vue'
+import ProjectModal from '@/components/projects/modals/ProjectModal.vue'
 import DeleteDialog from '@/components/modals/DeleteConfirmationDialog.vue'
-import Pagination from "@/components/Pagination.vue";
+import Pagination from '@/components/Pagination.vue'
+import SkelatonLoader from '@/components/SkelatonLoader.vue'
 import { showToast } from '@/common'
 
 export default {
@@ -58,7 +61,8 @@ export default {
   components: {
     ProjectModal,
     DeleteDialog,
-    Pagination
+    Pagination,
+    SkelatonLoader
   },
   data() {
     return {
@@ -68,6 +72,7 @@ export default {
       projectToDelete: null,
       currentPage: 1,
       limit: 10,
+      loaderLines: 2
     }
   },
   computed: {
@@ -86,6 +91,10 @@ export default {
   methods: {
     ...mapActions('project', ['fetchProjects', 'createProject', 'updateProject', 'deleteProject']),
 
+    openProject(project) {
+
+      this.$router.push('/projects/' + project._id)
+    },
     openAddModal() {
       this.selectedProject = null
       this.isModalOpen = true
@@ -104,7 +113,6 @@ export default {
     async handleSave(project) {
       try {
         if (project._id) {
-          console.log(project._id, project)
           await this.updateProject({projectId: project._id, projectData: project})
           showToast(this.$toasted, 'Project updated successfully!')
         } else {
@@ -176,6 +184,10 @@ export default {
   border-radius: 6px;
 }
 
+.project-item-content {
+  cursor: pointer;
+}
+
 .project-item h3 {
   margin: 0 0 8px;
 }
@@ -183,6 +195,7 @@ export default {
 .actions {
   margin-top: 12px;
   display: flex;
+  justify-content: flex-end;
   gap: 10px;
 }
 

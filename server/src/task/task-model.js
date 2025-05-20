@@ -22,6 +22,10 @@ const schema = BaseSchema({
     type: Date,
     required: true,
   },
+  description: {
+    type: String,
+    required: true,
+  },
   notes: {
     type: String,
   },

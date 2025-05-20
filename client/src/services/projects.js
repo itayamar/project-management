@@ -10,7 +10,7 @@ async function fetchProjects(page=1, limit=20) {
 }
 
 async function fetchProject(projectId) {
-    const url = `${PRODUCTS_BASE_URL}?projectId=${projectId}`
+    const url = `${PRODUCTS_BASE_URL}/${projectId}`
     const response = await fetch(url)
     if (!response.ok) throw new Error('Failed to fetch project')
     const project = await response.json()

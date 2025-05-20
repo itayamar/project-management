@@ -22,6 +22,9 @@ export default {
     SET_TOTAL_PROJECTS(state, totalProjects) {
       state.totalProjects = totalProjects;
     },
+    UPDATE_CURRENT_PROJECT(state, updatedProject) {
+      state.currentProject = { ...state.currentProject, ...updatedProject };
+    },
     UPDATE_PROJECT(state, updatedProject) {
       const index = state.projects.findIndex(p => p._id === updatedProject._id)
       if (index !== -1) {
@@ -30,7 +33,10 @@ export default {
     },
     REMOVE_PROJECT(state, projectId) {
       state.projects = state.projects.filter(p => p._id !== projectId)
-    }
+    },
+    CLEAR_CURRENT_PROJECT(state) {
+      state.currentProject = null;
+    },
   },
   actions: {
     async fetchProjects({ commit }, {page=1, limit=20} = {}) {
@@ -71,27 +77,37 @@ export default {
         throw error
       }
     },
-    async updateProject({ commit }, { projectId, projectData }) {
+    async updateProject({ commit, state }, { projectId, projectData }) {
       try {
-        const project = await updateProject(projectId, projectData)
-        commit('UPDATE_PROJECT', project)
-        return project
+        const updatedProject = await updateProject(projectId, projectData);
+        // Update in projects list
+        commit('UPDATE_PROJECT', updatedProject);
+        // Update currentProject if it's the one being edited
+        if (state.currentProject?._id === updatedProject._id) {
+          commit('UPDATE_CURRENT_PROJECT', updatedProject);
+        }
+
+        return updatedProject;
       } catch (error) {
-        commit('SET_ERROR', error.message, { root: true })
-        throw error
+        commit('SET_ERROR', error.message, { root: true });
+        throw error;
       }
     },
-    async deleteProject({ commit }, projectId) {
+    async deleteProject({ commit, state }, projectId) {
       try {
-        const response = await deleteProject(projectId)
-        commit('REMOVE_PROJECT', projectId)
+        await deleteProject(projectId);
+        commit('REMOVE_PROJECT', projectId);
 
-        return response
+        // If the deleted project is the one currently being viewed, clear it
+        if (state.currentProject?._id === projectId) {
+          commit('CLEAR_CURRENT_PROJECT');
+        }
+        return true;
       } catch (error) {
-        commit('SET_ERROR', error.message, { root: true })
-        throw error
+        commit('SET_ERROR', error.message, { root: true });
+        throw error;
       }
-    }
+    },
   },
 
 };
