@@ -1,5 +1,5 @@
 <template>
-  <div class="project-details">
+  <div class="project-details container">
     <div class="header">
       <button class="btn-back" @click="goBack">
         <span class="back-icon">←</span>
@@ -22,17 +22,9 @@
           :project="project"
           @edit="editProject"
           @delete="confirmDeleteProject"
-          @add-task="addTask"
       />
       
       <task-list :project-id="project._id"/>
-
-<!--      <create-task-modal-->
-<!--          :isOpen="showAddTaskModal"-->
-<!--          :projectId="project._id"-->
-<!--          @submit="handleCreateTask"-->
-<!--          @cancel="closeTaskModal"-->
-<!--      />-->
 
       <project-modal
           :isOpen="showEditModal"
@@ -80,7 +72,6 @@ export default {
     return {
       showEditModal: false,
       showDeleteModal: false,
-      showAddTaskModal: false,
     }
   },
   computed: {
@@ -136,10 +127,6 @@ export default {
       this.showDeleteModal = true
     },
 
-    addTask() {
-      this.showAddTaskModal = true
-    },
-
     async deleteProject() {
       try {
         await this.deleteProject(this.id)
@@ -150,22 +137,8 @@ export default {
       }
     },
 
-    async handleCreateTask(taskData) {
-      try {
-        await this.createTask({taskData})
-        showToast(this.$toasted, 'Task updated successfully!')
-        this.closeTaskModal()
-      } catch (error) {
-        showToast(this.$toasted, `Error: ${error.message}`, 'error')
-      }
-    },
-
     closeEditModal() {
       this.showEditModal = false
-    },
-
-    closeTaskModal() {
-      this.showAddTaskModal = false
     },
 
     closeDeleteModal() {
@@ -177,9 +150,6 @@ export default {
 
 <style lang="less" scoped>
 .project-details {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 24px;
   font-family: 'Segoe UI', sans-serif;
   color: #1f2937;
 }

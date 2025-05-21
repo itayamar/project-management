@@ -2,63 +2,47 @@
   <div class="task-list-container">
     <div class="header-section">
       <h3 class="section-title">Tasks</h3>
-      <button class="btn btn-add" @click="openCreateTaskModal">
-        ➕ Add Task
-      </button>
+      <div class="header-actions">
+        <div class="sort-controls">
+          <div class="sort-label">Sort by:</div>
+          <select v-model="sortField" class="sort-select">
+            <option value="dueDate">⏰ Due Date</option>
+            <option value="createdAt">📅 Created Date</option>
+            <option value="updatedAt">🔄 Last Updated</option>
+          </select>
+          <button 
+            class="btn btn-sort" 
+            @click="toggleSort" 
+            :title="sortOrder === 'asc' ? 'Showing oldest first' : 'Showing newest first'">
+            <span class="sort-icon">
+              {{ sortOrder === 'asc' ? '↓' : '↑' }}
+            </span>
+          </button>
+        </div>
+        <button class="btn btn-add" @click="openCreateTaskModal">
+          ➕ Add Task
+        </button>
+      </div>
     </div>
 
     <!-- Task filter controls -->
-    <div class="filters-section">
-      <div class="search-box">
-        <input 
-          type="text" 
-          :value="searchQuery"
-          @input="handleSearch($event.target.value)"
-          placeholder="Search tasks..."
-        >
-      </div>
-
-      <!-- Desktop tabs -->
-      <div class="status-tabs desktop-only">
-        <button
-          v-for="(label, status) in statusFilters"
-          :key="status"
-          class="status-tab"
-          :class="{
-            'active': currentFilter === status,
-            'tab-created': status === 'CREATED',
-            'tab-progress': status === 'IN_PROGRESS',
-            'tab-completed': status === 'COMPLETED',
-            'tab-archived': status === 'ARCHIVED'
-          }"
-          @click="filterTasks(status)"
-        >
-          <span class="status-icon" v-if="status !== 'ALL'">●</span>
-          {{ label }}
-          <span class="task-count" v-if="status !== 'ALL'">
-            {{ getTaskCountByStatus(status) }}
-          </span>
-        </button>
-      </div>
-
-      <!-- Mobile select -->
-      <div class="status-select-mobile mobile-only">
-        <select 
-          v-model="currentFilter"
-          @change="filterTasks(currentFilter)"
-          class="mobile-filter-select"
-        >
-          <option
-            v-for="(label, status) in statusFilters"
-            :key="status"
-            :value="status"
-          >
-            {{ label }} {{ status !== 'ALL' ? `(${getTaskCountByStatus(status)})` : '' }}
-          </option>
-        </select>
-        <span class="select-icon">▼</span>
-      </div>
-    </div>
+    <status-filter
+      :status-filters="statusFilters"
+      :current-status="currentFilter"
+      :search-query="searchQuery"
+      :counts="statusCountMap"
+      search-placeholder="Search tasks..."
+      default-value="ALL"
+      :status-class-map="{
+        'OVERDUE': { 'tab-overdue': true },
+        'CREATED': { 'tab-created': true },
+        'IN_PROGRESS': { 'tab-progress': true },
+        'COMPLETED': { 'tab-completed': true },
+        'ARCHIVED': { 'tab-archived': true }
+      }"
+      @search="handleSearch"
+      @filter="filterTasks"
+    />
 
     <!-- Loading state -->
     <div v-if="isLoading('tasks')" class="empty-state">
@@ -67,18 +51,22 @@
 
     <!-- Empty tasks state -->
     <div v-else-if="filteredTasks.length === 0" class="empty-state">
-      <h3>
-        {{ currentFilter === 'ALL' ? 'No tasks yet' : `No ${statusFilters[currentFilter].toLowerCase()} tasks` }}
-      </h3>
-      <p v-if="currentFilter === 'ALL'">
-        Add your first task to get started
-      </p>
-      <p v-else>
-        Try selecting a different filter
-      </p>
-      <button v-if="currentFilter === 'ALL'" class="btn btn-primary mt-3" @click="openCreateTaskModal">
-        <span class="btn-icon">+</span>Add Task
-      </button>
+      <div class="empty-state-content">
+        <span class="empty-icon">✓</span>
+        <h3>
+          {{ currentFilter === 'ALL' ? 'No tasks yet' : `No ${statusFilters[currentFilter].toLowerCase()} tasks` }}
+        </h3>
+        <p v-if="currentFilter === 'ALL'">
+          Get started by creating your first task for this project
+        </p>
+        <p v-else>
+          Try selecting a different filter or create a new task
+        </p>
+        <button class="btn btn-primary" @click="openCreateTaskModal">
+          <span class="btn-icon">+</span>
+          Add Task
+        </button>
+      </div>
     </div>
 
     <!-- Task list -->
@@ -91,6 +79,9 @@
       >
         <div class="task-card-header">
           <div class="task-status">
+            <div class="overdue-badge" v-if="isPastDue(task)">
+              ⚠️ Overdue
+            </div>
             <div
                 class="status-select-wrapper"
                 :style="{ backgroundColor: getStatusBgColor(task.state) }"
@@ -181,12 +172,19 @@ import {mapGetters, mapActions, mapState} from 'vuex'
 import DeleteModal from '@/components/modals/DeleteConfirmationDialog.vue'
 import SkelatonLoader from '@/components/SkelatonLoader.vue'
 import TaskModal from '@/components/tasks/modals/TaskModal.vue'
+import StatusFilter from '@/components/StatusFilter.vue'
 import { showToast } from '@/common'
 import Pagination from "@/components/Pagination.vue";
 
 export default {
   name: 'TaskList',
-  components: {Pagination, SkelatonLoader, DeleteModal, TaskModal },
+  components: {
+    Pagination,
+    SkelatonLoader,
+    DeleteModal,
+    TaskModal,
+    StatusFilter
+  },
   props: {
     projectId: {
       type: String,
@@ -199,6 +197,8 @@ export default {
       showDeleteModal: false,
       isEditing: false,
       currentFilter: 'ALL',
+      sortField: 'dueDate',
+      sortOrder: 'asc',
       taskToEdit: null,
       taskToDelete: null,
       taskForm: {
@@ -209,6 +209,7 @@ export default {
       errors: {},
       statusFilters: {
         ALL: 'All',
+        OVERDUE: 'Overdue',
         CREATED: 'Created',
         IN_PROGRESS: 'In Progress',
         COMPLETED: 'Completed',
@@ -231,15 +232,23 @@ export default {
     ...mapState({
       tasks: state => state.task.tasks,
       totalTasks: state => state.task.totalTasks,
+      taskCounts: state => state.task.taskCounts
     }),
     totalTasksPages() {
       return Math.ceil(this.totalTasks / this.limit)
     },
     filteredTasks() {
-      if (this.currentFilter === 'ALL') {
-        return this.sortTasks([...this.tasks])
+      let tasks = [...this.tasks];
+      
+      if (this.currentFilter === 'OVERDUE') {
+        return this.sortTasks(tasks.filter(task => this.isPastDue(task)));
       }
-      return this.sortTasks(this.tasks.filter(task => task.state === this.currentFilter))
+      
+      if (this.currentFilter === 'ALL') {
+        return this.sortTasks(tasks);
+      }
+      
+      return this.sortTasks(tasks.filter(task => task.state === this.currentFilter));
     },
     ...mapGetters([
       'isLoading',
@@ -247,7 +256,9 @@ export default {
       'errorMessage'
     ]),
     taskCountsByStatus() {
+      const overdueTasks = this.tasks.filter(t => this.isPastDue(t));
       return {
+        OVERDUE: overdueTasks.length,
         CREATED: this.tasks.filter(t => t.state === 'CREATED').length,
         IN_PROGRESS: this.tasks.filter(t => t.state === 'IN_PROGRESS').length,
         COMPLETED: this.tasks.filter(t => t.state === 'COMPLETED').length,
@@ -261,6 +272,16 @@ export default {
       set(value) {
         this.handleSearch(value);
       }
+    },
+    statusCountMap() {
+      return {
+        ALL: this.totalTasks,
+        OVERDUE: this.taskCounts.OVERDUE || 0,
+        CREATED: this.taskCounts.CREATED || 0,
+        IN_PROGRESS: this.taskCounts.IN_PROGRESS || 0,
+        COMPLETED: this.taskCounts.COMPLETED || 0,
+        ARCHIVED: this.taskCounts.ARCHIVED || 0
+      };
     }
   },
   created() {
@@ -301,23 +322,43 @@ export default {
     },
 
     sortTasks(tasks) {
-      // Sort by state and then by due date
+      // Sort by selected field first
+      const sortedTasks = [...tasks].sort((a, b) => {
+        let valueA, valueB;
+        
+        switch (this.sortField) {
+          case 'dueDate':
+            valueA = new Date(a.dueDate);
+            valueB = new Date(b.dueDate);
+            break;
+          case 'createdAt':
+            valueA = new Date(a.createdAt);
+            valueB = new Date(b.createdAt);
+            break;
+          case 'updatedAt':
+            valueA = new Date(a.updatedAt || a.createdAt);
+            valueB = new Date(b.updatedAt || b.createdAt);
+            break;
+          default:
+            valueA = new Date(a.dueDate);
+            valueB = new Date(b.dueDate);
+        }
+        
+        return this.sortOrder === 'asc' ? valueA - valueB : valueB - valueA;
+      });
+
+      // Then sort by state
       const stateOrder = {
         'CREATED': 0,
         'IN_PROGRESS': 1,
         'COMPLETED': 2,
         'ARCHIVED': 3
-      }
+      };
 
-      return [...tasks].sort((a, b) => {
-        // First by state
-        if (stateOrder[a.state] !== stateOrder[b.state]) {
-          return stateOrder[a.state] - stateOrder[b.state]
-        }
-
-        // Then by due date
-        return new Date(a.dueDate) - new Date(b.dueDate)
-      })
+      return sortedTasks.sort((a, b) => {
+        if (a.state === b.state) return 0;
+        return stateOrder[a.state] - stateOrder[b.state];
+      });
     },
 
     formatDate(dateString) {
@@ -467,6 +508,8 @@ export default {
         }
       }).then(() => {
         showToast(this.$toasted, 'Task status updated!')
+        // Reload tasks to get updated counts
+        this.loadTasks()
       }).catch(err => {
         showToast(this.$toasted, `Error: ${err.message}`, 'error')
       })
@@ -500,6 +543,9 @@ export default {
         const hasScroll = tabsContainer.scrollWidth > tabsContainer.clientWidth;
         tabsContainer.classList.toggle('has-scroll', hasScroll);
       }
+    },
+    toggleSort() {
+      this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
     }
   }
 }
@@ -523,6 +569,91 @@ export default {
     font-size: 1.5rem;
     font-weight: 600;
     margin: 0;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .sort-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: white;
+    padding: 0 4px;
+    height: 40px;
+    transition: all 0.2s ease;
+
+    &:hover {
+      border-color: #d1d5db;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+
+    .sort-label {
+      padding-left: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #6b7280;
+      white-space: nowrap;
+    }
+
+    .sort-select {
+      padding: 0 8px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #111827;
+      border: none;
+      outline: none;
+      cursor: pointer;
+      background: transparent;
+      appearance: none;
+      min-width: 140px;
+
+      option {
+        font-size: 14px;
+      }
+
+      &:hover {
+        color: #2563eb;
+      }
+    }
+
+    .btn-sort {
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      color: #6b7280;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 16px;
+
+      &:hover {
+        background: #f3f4f6;
+        color: #2563eb;
+      }
+
+      .sort-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+        line-height: 1;
+        transition: transform 0.2s ease;
+        transform-origin: center;
+        will-change: transform;
+      }
+    }
   }
 
   .btn-add {
@@ -590,6 +721,15 @@ export default {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+.overdue-badge {
+  background-color: #ef4444;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 
 .status-select-wrapper {
@@ -843,6 +983,14 @@ export default {
       color: #374151; 
     }
   }
+
+  &.tab-overdue {
+    .status-icon { color: #ef4444; }
+    &.active .task-count { 
+      background: #fee2e2; 
+      color: #b91c1c; 
+    }
+  }
 }
 
 /* Base display states */
@@ -933,6 +1081,21 @@ export default {
     flex-direction: column;
     align-items: stretch;
 
+    .header-actions {
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+    }
+
+    .sort-controls {
+      width: 100%;
+      justify-content: space-between;
+
+      .sort-select {
+        flex: 1;
+      }
+    }
+
     .btn-add {
       width: 100%;
       justify-content: center;
@@ -957,6 +1120,108 @@ export default {
 
   &:hover {
     background: #dbeafe;
+  }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  background: #f9fafb;
+  border-radius: 12px;
+  border: 2px dashed #e5e7eb;
+  margin: 24px 0;
+
+  .empty-state-content {
+    max-width: 400px;
+    margin: 0 auto;
+  }
+
+  .empty-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 20px;
+    background: #eff6ff;
+    border-radius: 50%;
+    font-size: 28px;
+    color: #2563eb;
+  }
+
+  h3 {
+    color: #111827;
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0 0 12px;
+  }
+
+  p {
+    color: #6b7280;
+    font-size: 15px;
+    line-height: 1.5;
+    margin: 0 0 24px;
+  }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 24px;
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    .btn-icon {
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    &:hover {
+      background: #1d4ed8;
+      transform: translateY(-1px);
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+  }
+}
+
+@media screen and (max-width: 640px) {
+  .empty-state {
+    margin: 16px -16px;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    padding: 40px 20px;
+
+    .empty-icon {
+      width: 56px;
+      height: 56px;
+      font-size: 24px;
+      margin-bottom: 16px;
+    }
+
+    h3 {
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+
+    p {
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+
+    .btn-primary {
+      width: 100%;
+      justify-content: center;
+    }
   }
 }
 </style>

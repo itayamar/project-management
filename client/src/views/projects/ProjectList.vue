@@ -1,5 +1,5 @@
 <template>
-  <div class="project-list">
+  <div class="project-list container">
     <div class="header-section">
       <h1>Projects</h1>
       <button class="btn btn-primary" @click="openAddModal">
@@ -7,51 +7,30 @@
       </button>
     </div>
 
-    <div class="filters-section">
-      <div class="search-box">
-        <input 
-          type="text" 
-          v-model="searchQuery" 
-          placeholder="Search projects..."
-          @input="handleSearch"
-        >
-      </div>
-      
-      <div class="status-tabs">
-        <button
-          v-for="(label, value) in statusFilters"
-          :key="value"
-          class="status-tab"
-          :class="{
-            'active': filters.status === value,
-            'tab-all': value === '',
-            'tab-progress': value === 'in_progress',
-            'tab-completed': value === 'completed'
-          }"
-          @click="updateFilters({ status: value })"
-        >
-          <span class="status-icon" v-if="value">●</span>
-          {{ label }}
-          <span class="count" v-if="value !== ''">
-            {{ getProjectCountByStatus(value) }}
-          </span>
-        </button>
-      </div>
-    </div>
+    <status-filter
+      :status-filters="statusFilters"
+      :current-status="filters.status"
+      :search-query="searchQuery"
+      :counts="statusCountMap"
+      search-placeholder="Search projects..."
+      @search="handleSearch"
+      @filter="status => updateFilters({ status })"
+    />
 
-    <skelaton-loader v-if="isLoading" :lines="loaderLines" type="card"></skelaton-loader>
+    <skelaton-loader v-if="isLoading('projects')" :lines="loaderLines" type="card"></skelaton-loader>
 
     <div v-else-if="!projects.length" class="empty-state">
       <div class="empty-state-content">
-        <span class="empty-icon">📋</span>
-        <h3>No Projects Found</h3>
+        <span class="empty-icon">��</span>
+        <h3>{{ hasActiveFilters ? 'No Projects Found' : 'No Projects Yet' }}</h3>
         <p v-if="hasActiveFilters">
           No projects match your current filters. Try adjusting your search or filter criteria.
         </p>
         <p v-else>
-          There are no projects yet. Get started by creating your first project!
+          Get started by creating your first project to organize your tasks!
         </p>
         <button class="btn btn-primary" @click="openAddModal">
+          <span class="btn-icon">+</span>
           Create Project
         </button>
       </div>
@@ -104,11 +83,12 @@
 </template>
 
 <script>
-import { mapState, mapActions } from 'vuex'
+import { mapState, mapActions, mapGetters } from 'vuex'
 import ProjectModal from '@/components/projects/modals/ProjectModal.vue'
 import DeleteDialog from '@/components/modals/DeleteConfirmationDialog.vue'
 import Pagination from '@/components/Pagination.vue'
 import SkelatonLoader from '@/components/SkelatonLoader.vue'
+import StatusFilter from '@/components/StatusFilter.vue'
 import { showToast } from '@/common'
 
 export default {
@@ -117,7 +97,8 @@ export default {
     ProjectModal,
     DeleteDialog,
     Pagination,
-    SkelatonLoader
+    SkelatonLoader,
+    StatusFilter
   },
   data() {
     return {
@@ -137,10 +118,22 @@ export default {
   computed: {
     ...mapState({
       projects: state => state.project.projects,
-      isLoading: state => state.isLoading,
       totalProjects: state => state.project.totalProjects,
-      filters: state => state.project.filters
+      filters: state => state.project.filters,
+      projectCounts: state => state.project.projectCounts
     }),
+    ...mapGetters([
+      'isLoading',
+      'hasError',
+      'errorMessage'
+    ]),
+    statusCountMap() {
+      return {
+        '': this.totalProjects || 0,
+        'in_progress': this.projectCounts?.in_progress || 0,
+        'completed': this.projectCounts?.completed || 0
+      };
+    },
     searchQuery: {
       get() {
         return this.filters.search;
@@ -171,11 +164,8 @@ export default {
     hasActiveFilters() {
       return this.filters.search || this.filters.status;
     },
-    projectCountsByStatus() {
-      return {
-        'in_progress': this.projects.filter(p => p.inProgress && !p.completed).length,
-        'completed': this.projects.filter(p => p.completed).length
-      }
+    getProjectCountByStatus() {
+      return (status) => this.projectCounts[status] || 0;
     }
   },
   created() {
@@ -258,20 +248,15 @@ export default {
     handlePageChange(newPage) {
       this.fetchProjectsPage(newPage);
     },
-    getProjectCountByStatus(status) {
-      return this.projectCountsByStatus[status] || 0
-    }
   }
 }
 </script>
 
-<style scoped>
+<style lang="less" scoped>
+@import '../../styles/main.less';
+
 .project-list {
-  max-width: 75%;
-  margin: 0 auto;
-  padding: 24px;
-  width: 100%;
-  box-sizing: border-box;
+  /* Container styles are applied via the container class */
 }
 
 .header-section {
@@ -475,6 +460,7 @@ export default {
   background: #f9fafb;
   border-radius: 12px;
   border: 2px dashed #e5e7eb;
+  margin: 24px 0;
 
   .empty-state-content {
     max-width: 400px;
@@ -482,16 +468,23 @@ export default {
   }
 
   .empty-icon {
-    font-size: 48px;
-    margin-bottom: 16px;
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 20px;
+    background: #eff6ff;
+    border-radius: 50%;
+    font-size: 28px;
+    color: #2563eb;
   }
 
   h3 {
     color: #111827;
     font-size: 20px;
     font-weight: 600;
-    margin: 0 0 8px;
+    margin: 0 0 12px;
   }
 
   p {
@@ -514,6 +507,11 @@ export default {
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
+
+    .btn-icon {
+      font-size: 18px;
+      line-height: 1;
+    }
 
     &:hover {
       background: #1d4ed8;
@@ -567,35 +565,18 @@ export default {
     font-size: 8px;
   }
 
-  .count {
-    background: #e5e7eb;
-    color: #4b5563;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 12px;
-  }
-
   &.tab-all {
-    &.active .count { 
-      background: #e5e7eb; 
+    &.active { 
       color: #111827; 
     }
   }
 
   &.tab-progress {
     .status-icon { color: #f59e0b; }
-    &.active .count { 
-      background: #fef3c7; 
-      color: #92400e; 
-    }
   }
 
   &.tab-completed {
     .status-icon { color: #10b981; }
-    &.active .count { 
-      background: #d1fae5; 
-      color: #065f46; 
-    }
   }
 }
 
@@ -605,48 +586,34 @@ export default {
   }
 }
 
-@media (max-width: 640px) {
-  .project-list {
-    padding: 16px;
-  }
+@media screen and (max-width: 640px) {
+  .empty-state {
+    margin: 16px -16px;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    padding: 40px 20px;
 
-  .header-section {
-    flex-direction: column;
-    align-items: stretch;
-    text-align: center;
+    .empty-icon {
+      width: 56px;
+      height: 56px;
+      font-size: 24px;
+      margin-bottom: 16px;
+    }
+
+    h3 {
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+
+    p {
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
 
     .btn-primary {
       width: 100%;
       justify-content: center;
-    }
-  }
-
-  .filters-section {
-    margin: 0 -16px;
-    padding: 0 16px;
-  }
-
-  .status-tabs {
-    margin: 0 -16px;
-    padding: 0 16px;
-  }
-
-  .project-item-content h3 {
-    flex-direction: column;
-    align-items: flex-start;
-
-    .badge {
-      align-self: flex-start;
-    }
-  }
-
-  .actions {
-    padding: 12px 16px;
-    
-    button {
-      width: 40px;
-      height: 40px;
-      font-size: 18px;
     }
   }
 }

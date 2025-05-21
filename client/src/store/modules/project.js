@@ -8,6 +8,11 @@ export default {
     projects: [],
     currentProject: null,
     totalProjects: 0,
+    projectCounts: {
+      in_progress: 0,
+      completed: 0,
+      total: 0
+    },
     filters: {
       search: '',
       status: '',
@@ -18,6 +23,13 @@ export default {
   mutations: {
     SET_PROJECTS(state, projects) {
       state.projects = projects;
+    },
+    SET_PROJECT_COUNTS(state, counts) {
+      state.projectCounts = {
+        in_progress: counts?.in_progress || 0,
+        completed: counts?.completed || 0,
+        total: counts?.total || 0
+      };
     },
     SET_CURRENT_PROJECT(state, project) {
       state.currentProject = project
@@ -76,6 +88,7 @@ export default {
         
         commit('SET_PROJECTS', projectsData.projects);
         commit('SET_TOTAL_PROJECTS', projectsData.total);
+        commit('SET_PROJECT_COUNTS', projectsData.counts);
       } catch (error) {
         commit('SET_ERROR', error.message, { root: true });
       } finally {

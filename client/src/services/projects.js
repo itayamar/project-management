@@ -1,4 +1,4 @@
-const PRODUCTS_BASE_URL = '/api/projects/';
+const PROJECTS_BASE_URL = '/api/projects/';
 
 async function fetchProjects({ page = 1, limit = 20, search = '', status = '' } = {}) {
     const params = new URLSearchParams();
@@ -17,7 +17,7 @@ async function fetchProjects({ page = 1, limit = 20, search = '', status = '' } 
         params.append('status', status.trim());
     }
 
-    const url = `${PRODUCTS_BASE_URL}?${params.toString()}`;
+    const url = `${PROJECTS_BASE_URL}?${params.toString()}`;
     const response = await fetch(url);
     if (!response.ok) throw new Error('Failed to fetch projects');
 
@@ -26,7 +26,7 @@ async function fetchProjects({ page = 1, limit = 20, search = '', status = '' } 
 }
 
 async function fetchProject(projectId) {
-    const url = `${PRODUCTS_BASE_URL}/${projectId}`
+    const url = `${PROJECTS_BASE_URL}/${projectId}`
     const response = await fetch(url)
     if (!response.ok) throw new Error('Failed to fetch project')
     const project = await response.json()
@@ -34,7 +34,7 @@ async function fetchProject(projectId) {
 }
 
 async function createProject(projectData) {
-    const response = await fetch(PRODUCTS_BASE_URL, {
+    const response = await fetch(PROJECTS_BASE_URL, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -49,7 +49,7 @@ async function createProject(projectData) {
 }
 
 async function updateProject(projectId, projectData) {
-    const response = await fetch(`${PRODUCTS_BASE_URL}${projectId}`, {
+    const response = await fetch(`${PROJECTS_BASE_URL}${projectId}`, {
         method: 'PUT',
         headers: {
             'Content-Type': 'application/json',
@@ -64,7 +64,7 @@ async function updateProject(projectId, projectData) {
 }
 
 async function deleteProject(projectId) {
-    const response = await fetch(`${PRODUCTS_BASE_URL}${projectId}`, {
+    const response = await fetch(`${PROJECTS_BASE_URL}${projectId}`, {
         method: 'DELETE'
     })
     if (!response.ok) throw new Error('Failed to delete project')

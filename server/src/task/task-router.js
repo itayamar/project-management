@@ -16,7 +16,7 @@ router
 
             const filter = {};
             if (req.query.projectId) {
-                filter.projectId = req.query.projectId;
+                filter.projectId = new mongoose.Types.ObjectId(req.query.projectId);
             }
 
             // Add search functionality
@@ -29,12 +29,88 @@ router
                 ];
             }
 
-            const [tasks, total] = await Promise.all([
-                Task.find(filter).skip(skip).limit(limit).lean(),
-                Task.countDocuments(filter)
+            const pipeline = [
+                { $match: filter }
+            ];
+
+            // Get total count before pagination
+            const countPipeline = [...pipeline];
+            const [countResult] = await Task.aggregate([...countPipeline, { $count: "total" }]);
+            const total = countResult ? countResult.total : 0;
+
+            // Get status counts for the current project
+            const countsByStatus = await Task.aggregate([
+                { $match: { projectId: new mongoose.Types.ObjectId(req.query.projectId) } },
+                {
+                    $addFields: {
+                        isOverdue: {
+                            $and: [
+                                { $lt: ["$dueDate", new Date()] },
+                                { 
+                                    $not: { 
+                                        $in: ["$state", ["COMPLETED", "ARCHIVED"]] 
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    $group: {
+                        _id: "$state",
+                        count: { $sum: 1 },
+                        overdue: { $sum: { $cond: ["$isOverdue", 1, 0] } }
+                    }
+                },
+                {
+                    $group: {
+                        _id: null,
+                        stateCounts: { $push: { state: "$_id", count: "$count" } },
+                        totalOverdue: { $sum: "$overdue" }
+                    }
+                }
             ]);
 
-            res.send({ tasks, total });
+            // Convert array of counts to object
+            const stateCountsObj = (countsByStatus[0]?.stateCounts || []).reduce((acc, { state, count }) => {
+                acc[state] = count;
+                return acc;
+            }, {
+                CREATED: 0,
+                IN_PROGRESS: 0,
+                COMPLETED: 0,
+                ARCHIVED: 0
+            });
+
+            const counts = {
+                ...stateCountsObj,
+                OVERDUE: countsByStatus[0]?.totalOverdue || 0
+            };
+
+            // Add pagination
+            pipeline.push(
+                { $skip: skip },
+                { $limit: limit },
+                { 
+                    $project: {
+                        description: 1,
+                        state: 1,
+                        notes: 1,
+                        dueDate: 1,
+                        projectId: 1,
+                        createdAt: 1,
+                        updatedAt: 1
+                    }
+                }
+            );
+
+            const tasks = await Task.aggregate(pipeline);
+
+            res.send({ 
+                tasks, 
+                total,
+                counts
+            });
         } catch (err) {
             next(err);
         }
@@ -60,15 +136,6 @@ router
         }
     });
 
-router
-  .route(`${BASE_PATH}/search`)
-  // search
-  .post((req, res, next) => {
-    Task.find(req.body)
-      .lean()
-      .then((tasks) => res.send(tasks))
-      .catch(next);
-  });
 
 router
   .route(`${BASE_PATH}/:id`)

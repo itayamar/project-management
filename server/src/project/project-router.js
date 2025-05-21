@@ -90,6 +90,79 @@ router
             const [countResult] = await Project.aggregate([...countPipeline, { $count: "total" }]);
             const total = countResult ? countResult.total : 0;
 
+            // Get status counts
+            const countsByStatus = await Project.aggregate([
+                {
+                    $lookup: {
+                        from: "tasks",
+                        localField: "_id",
+                        foreignField: "projectId",
+                        as: "tasks",
+                    },
+                },
+                {
+                    $addFields: {
+                        hasInProgressTasks: {
+                            $gt: [
+                                {
+                                    $size: {
+                                        $filter: {
+                                            input: "$tasks",
+                                            as: "task",
+                                            cond: { $eq: ["$$task.state", "IN_PROGRESS"] },
+                                        },
+                                    },
+                                },
+                                0,
+                            ],
+                        },
+                        allTasksCompleted: {
+                            $cond: [
+                                { $gt: [{ $size: "$tasks" }, 0] }, // if has tasks
+                                {
+                                    $eq: [
+                                        {
+                                            $size: {
+                                                $filter: {
+                                                    input: "$tasks",
+                                                    as: "task",
+                                                    cond: { $ne: ["$$task.state", "COMPLETED"] },
+                                                },
+                                            },
+                                        },
+                                        0, // all tasks should be completed
+                                    ],
+                                },
+                                false, // if no tasks, not completed
+                            ],
+                        },
+                    },
+                },
+                {
+                    $group: {
+                        _id: null,
+                        in_progress: {
+                            $sum: {
+                                $cond: [
+                                    { $and: [
+                                        "$hasInProgressTasks",
+                                        { $not: "$allTasksCompleted" }
+                                    ]},
+                                    1,
+                                    0
+                                ]
+                            }
+                        },
+                        completed: {
+                            $sum: {
+                                $cond: ["$allTasksCompleted", 1, 0]
+                            }
+                        },
+                        total: { $sum: 1 }
+                    }
+                }
+            ]);
+
             // Add pagination
             pipeline.push(
                 { $skip: skip },
@@ -98,8 +171,17 @@ router
             );
 
             const projects = await Project.aggregate(pipeline);
+            const counts = countsByStatus[0] || { in_progress: 0, completed: 0, total: 0 };
 
-            res.send({ projects, total });
+            res.send({ 
+                projects, 
+                total,
+                counts: {
+                    in_progress: counts.in_progress,
+                    completed: counts.completed,
+                    total: counts.total
+                }
+            });
         } catch (err) {
             next(err);
         }

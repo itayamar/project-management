@@ -13,6 +13,12 @@ export default {
         tasks: [],
         currentTask: null,
         totalTasks: 0,
+        taskCounts: {
+            CREATED: 0,
+            IN_PROGRESS: 0,
+            COMPLETED: 0,
+            ARCHIVED: 0
+        },
         filters: {
             search: '',
             page: 1,
@@ -40,6 +46,9 @@ export default {
         },
         SET_TOTAL_TASKS(state, total) {
             state.totalTasks = total;
+        },
+        SET_TASK_COUNTS(state, counts) {
+            state.taskCounts = { ...state.taskCounts, ...counts };
         },
         SET_FILTERS(state, filters) {
             state.filters = { ...state.filters, ...filters };
@@ -75,6 +84,7 @@ export default {
                 
                 commit("SET_TASKS", data.tasks);
                 commit("SET_TOTAL_TASKS", data.total);
+                commit("SET_TASK_COUNTS", data.counts);
             } catch (error) {
                 commit("SET_ERROR", error.message, { root: true });
             } finally {
@@ -125,10 +135,14 @@ export default {
             }
         },
 
-        async updateTask({ commit }, { taskId, taskData }) {
+        async updateTask({ commit, dispatch }, { taskId, taskData }) {
             try {
                 const task = await updateTask(taskId, taskData);
                 commit("UPDATE_TASK", task);
+                
+                // Fetch fresh task data to update counts
+                await dispatch('fetchTasks', { projectId: taskData.projectId });
+                
                 return task;
             } catch (error) {
                 commit("SET_ERROR", error.message, { root: true });
