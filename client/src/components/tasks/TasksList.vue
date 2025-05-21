@@ -44,52 +44,34 @@
       @filter="filterTasks"
     />
 
-    <!-- Loading state -->
-    <div v-if="isLoading('tasks')" class="empty-state">
-      <skelaton-loader :lines="4" type="card" />
-    </div>
-
-    <!-- Empty tasks state -->
-    <div v-else-if="filteredTasks.length === 0" class="empty-state">
-      <div class="empty-state-content">
-        <span class="empty-icon">✓</span>
-        <h3>
-          {{ currentFilter === 'ALL' ? 'No tasks yet' : `No ${statusFilters[currentFilter].toLowerCase()} tasks` }}
-        </h3>
-        <p v-if="currentFilter === 'ALL'">
-          Get started by creating your first task for this project
-        </p>
-        <p v-else>
-          Try selecting a different filter or create a new task
-        </p>
-        <button class="btn btn-primary" @click="openCreateTaskModal">
-          <span class="btn-icon">+</span>
-          Add Task
-        </button>
-      </div>
-    </div>
-
-    <!-- Task list -->
-    <div v-else class="task-list">
-      <div
-          v-for="task in filteredTasks"
-          :key="task._id"
-          class="task-card"
-          :class="{'past-due': isPastDue(task)}"
-      >
+    <data-table
+      :items="filteredTasks"
+      :loading="isLoading('tasks')"
+      :current-page="currentPage"
+      :total-pages="totalTasksPages"
+      :empty-icon="'✓'"
+      :empty-title="currentFilter === 'ALL' ? 'No tasks yet' : `No ${statusFilters[currentFilter].toLowerCase()} tasks`"
+      :empty-description="currentFilter === 'ALL' ? 'Get started by creating your first task for this project' : 'Try selecting a different filter or create a new task'"
+      :add-button-text="'Add Task'"
+      :highlight-condition="isPastDue"
+      @add="openCreateTaskModal"
+      @edit="editTask"
+      @delete="confirmDeleteTask"
+    >
+      <template #card-content="{ item: task }">
         <div class="task-card-header">
           <div class="task-status">
             <div class="overdue-badge" v-if="isPastDue(task)">
               ⚠️ Overdue
             </div>
             <div
-                class="status-select-wrapper"
-                :style="{ backgroundColor: getStatusBgColor(task.state) }"
+              class="status-select-wrapper"
+              :style="{ backgroundColor: getStatusBgColor(task.state) }"
             >
               <select
-                  v-model="task.state"
-                  @change="handleStatusChange(task)"
-                  class="status-select"
+                v-model="task.state"
+                @change="handleStatusChange(task)"
+                class="status-select"
               >
                 <option value="CREATED">Created</option>
                 <option value="IN_PROGRESS">In Progress</option>
@@ -110,7 +92,7 @@
             <button 
               v-if="isTextTruncated(task.description)" 
               class="expand-btn"
-              @click="toggleExpand(task._id)"
+              @click.stop="toggleExpand(task._id)"
             >
               {{ expandedTasks[task._id] ? 'Show less' : 'Show more' }}
             </button>
@@ -120,49 +102,33 @@
             <button 
               v-if="isTextTruncated(task.notes)" 
               class="expand-btn"
-              @click="toggleExpand(task._id + '_notes')"
+              @click.stop="toggleExpand(task._id + '_notes')"
             >
               {{ expandedTasks[task._id + '_notes'] ? 'Show less' : 'Show more' }}
             </button>
           </div>
           <p v-else class="task-notes text-muted">No notes</p>
         </div>
-
-        <div class="task-actions">
-          <button class="action-btn edit-btn" @click="editTask(task)" title="Edit task">
-            ✏️
-          </button>
-          <button class="action-btn delete-btn" @click="confirmDeleteTask(task)" title="Delete task">
-            🗑️
-          </button>
-        </div>
-      </div>
-
-      <pagination
-          v-if="filteredTasks.length"
-          :currentPage="currentPage"
-          :totalPages="totalTasksPages"
-          @page-change="handlePageChange"
-      />
-    </div>
+      </template>
+    </data-table>
 
     <!-- Task Modal -->
     <TaskModal
-        :isOpen="showTaskModal"
-        :projectId="projectId"
-        :task="taskToEdit"
-        @submit="handleSaveTask"
-        @cancel="closeTaskModal"
+      :isOpen="showTaskModal"
+      :projectId="projectId"
+      :task="taskToEdit"
+      @submit="handleSaveTask"
+      @cancel="closeTaskModal"
     />
 
     <!-- Delete Confirmation Modal -->
     <delete-modal
-        v-if="taskToDelete"
-        :isOpen="showDeleteModal"
-        :item="taskToDelete"
-        type="task"
-        @cancel="closeDeleteModal"
-        @confirm="handleDeleteTask"
+      v-if="taskToDelete"
+      :isOpen="showDeleteModal"
+      :item="taskToDelete"
+      type="task"
+      @cancel="closeDeleteModal"
+      @confirm="handleDeleteTask"
     />
   </div>
 </template>
@@ -170,20 +136,18 @@
 <script>
 import {mapGetters, mapActions, mapState} from 'vuex'
 import DeleteModal from '@/components/modals/DeleteConfirmationDialog.vue'
-import SkelatonLoader from '@/components/SkelatonLoader.vue'
 import TaskModal from '@/components/tasks/modals/TaskModal.vue'
 import StatusFilter from '@/components/StatusFilter.vue'
+import DataTable from '@/components/DataTable.vue'
 import { showToast } from '@/common'
-import Pagination from "@/components/Pagination.vue";
 
 export default {
   name: 'TaskList',
   components: {
-    Pagination,
-    SkelatonLoader,
     DeleteModal,
     TaskModal,
-    StatusFilter
+    StatusFilter,
+    DataTable
   },
   props: {
     projectId: {
@@ -661,55 +625,6 @@ export default {
   }
 }
 
-.filters-section {
-  margin-bottom: 1.5rem;
-  position: relative;
-
-  .search-box {
-    margin-bottom: 1rem;
-
-    input {
-      width: 100%;
-      padding: 12px 16px;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      font-size: 15px;
-      transition: all 0.2s ease;
-      background: #f9fafb;
-
-      &:focus {
-        outline: none;
-        border-color: #2563eb;
-        background: white;
-        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-      }
-
-      &::placeholder {
-        color: #9ca3af;
-      }
-    }
-  }
-}
-
-.task-card {
-  background-color: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  overflow: hidden;
-  transition: all 0.2s ease;
-  margin-bottom: 1rem;
-  display: flex;
-  flex-direction: column;
-
-  &:hover {
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  }
-
-  &.past-due {
-    border-left: 4px solid #ef4444;
-  }
-}
-
 .task-card-header {
   padding: 12px 16px;
   background-color: #f9fafb;
@@ -782,10 +697,6 @@ export default {
     color: #374151;
     font-weight: 500;
   }
-
-  &:focus + .select-icon {
-    transform: translateY(2px);
-  }
 }
 
 .task-due-date {
@@ -852,230 +763,6 @@ export default {
   }
 }
 
-.task-actions {
-  display: flex;
-  gap: 8px;
-  padding: 12px 16px;
-  background-color: #f9fafb;
-  border-top: 1px solid #e5e7eb;
-  justify-content: flex-end;
-}
-
-.status-tabs {
-  display: flex;
-  gap: 4px;
-  padding: 0 1px 1px;
-  margin: 0 -1rem;
-  padding: 0 1rem;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  position: relative;
-  
-  &::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: #e5e7eb;
-  }
-  
-  &::-webkit-scrollbar {
-    display: none;
-  }
-
-  &::before {
-    content: '';
-    position: absolute;
-    right: 0;
-    top: 0;
-    bottom: 1px;
-    width: 24px;
-    background: linear-gradient(to right, transparent, #f9fafb);
-    pointer-events: none;
-    z-index: 1;
-    opacity: 0;
-    transition: opacity 0.2s;
-  }
-
-  &.has-scroll::before {
-    opacity: 1;
-  }
-}
-
-.status-tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  border: none;
-  background: transparent;
-  color: #6b7280;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  white-space: nowrap;
-  transition: all 0.2s ease;
-  user-select: none;
-  -webkit-tap-highlight-color: transparent;
-
-  &:hover {
-    color: #111827;
-  }
-
-  &.active {
-    color: #111827;
-    border-bottom-color: #2563eb;
-  }
-
-  .status-icon {
-    font-size: 8px;
-  }
-
-  .task-count {
-    background: #e5e7eb;
-    color: #4b5563;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 12px;
-    min-width: 24px;
-    text-align: center;
-  }
-
-  &.tab-all {
-    &.active .task-count { 
-      background: #e5e7eb; 
-      color: #111827; 
-    }
-  }
-
-  &.tab-created {
-    .status-icon { color: #2563eb; }
-    &.active .task-count { 
-      background: #eff6ff; 
-      color: #1e40af; 
-    }
-  }
-
-  &.tab-progress {
-    .status-icon { color: #f59e0b; }
-    &.active .task-count { 
-      background: #fef3c7; 
-      color: #92400e; 
-    }
-  }
-
-  &.tab-completed {
-    .status-icon { color: #10b981; }
-    &.active .task-count { 
-      background: #d1fae5; 
-      color: #065f46; 
-    }
-  }
-
-  &.tab-archived {
-    .status-icon { color: #6b7280; }
-    &.active .task-count { 
-      background: #f3f4f6; 
-      color: #374151; 
-    }
-  }
-
-  &.tab-overdue {
-    .status-icon { color: #ef4444; }
-    &.active .task-count { 
-      background: #fee2e2; 
-      color: #b91c1c; 
-    }
-  }
-}
-
-/* Base display states */
-.desktop-only {
-  display: flex !important;
-}
-
-.mobile-only {
-  display: none !important;
-}
-
-.status-select-mobile {
-  position: relative;
-  margin-top: 8px;
-}
-
-/* Mobile styles */
-@media screen and (max-width: 640px) {
-  .desktop-only {
-    display: none !important;
-  }
-
-  .mobile-only {
-    display: block !important;
-  }
-
-  .filters-section {
-    margin: 0 -16px 1.5rem;
-    background: white;
-    border-bottom: 1px solid #e5e7eb;
-    padding: 16px;
-    
-    .search-box {
-      margin: 0;
-      margin-bottom: 12px;
-      
-      input {
-        border-radius: 6px;
-      }
-    }
-  }
-
-  .status-select-mobile {
-    margin-top: 0;
-
-    .mobile-filter-select {
-      width: 100%;
-      padding: 12px 16px;
-      padding-right: 40px;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      background: #f9fafb;
-      color: #111827;
-      font-size: 15px;
-      font-weight: 500;
-      appearance: none;
-      -webkit-appearance: none;
-      cursor: pointer;
-      transition: all 0.2s ease;
-
-      &:focus {
-        outline: none;
-        border-color: #2563eb;
-        background: white;
-        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-      }
-    }
-
-    .select-icon {
-      position: absolute;
-      right: 16px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: #6b7280;
-      font-size: 12px;
-      pointer-events: none;
-      transition: transform 0.2s ease;
-    }
-  }
-
-  .task-actions {
-    padding: 8px 12px;
-  }
-}
-
 @media (max-width: 480px) {
   .header-section {
     flex-direction: column;
@@ -1097,128 +784,6 @@ export default {
     }
 
     .btn-add {
-      width: 100%;
-      justify-content: center;
-    }
-  }
-
-  .section-title {
-    text-align: center;
-  }
-}
-
-.btn-add {
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-weight: 600;
-  font-size: 14px;
-  cursor: pointer;
-  border: none;
-  background: #eff6ff;
-  color: #1d4ed8;
-  transition: background 0.2s ease;
-
-  &:hover {
-    background: #dbeafe;
-  }
-}
-
-.empty-state {
-  text-align: center;
-  padding: 48px 24px;
-  background: #f9fafb;
-  border-radius: 12px;
-  border: 2px dashed #e5e7eb;
-  margin: 24px 0;
-
-  .empty-state-content {
-    max-width: 400px;
-    margin: 0 auto;
-  }
-
-  .empty-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 64px;
-    height: 64px;
-    margin: 0 auto 20px;
-    background: #eff6ff;
-    border-radius: 50%;
-    font-size: 28px;
-    color: #2563eb;
-  }
-
-  h3 {
-    color: #111827;
-    font-size: 20px;
-    font-weight: 600;
-    margin: 0 0 12px;
-  }
-
-  p {
-    color: #6b7280;
-    font-size: 15px;
-    line-height: 1.5;
-    margin: 0 0 24px;
-  }
-
-  .btn-primary {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 24px;
-    background: #2563eb;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-
-    .btn-icon {
-      font-size: 18px;
-      line-height: 1;
-    }
-
-    &:hover {
-      background: #1d4ed8;
-      transform: translateY(-1px);
-    }
-
-    &:active {
-      transform: translateY(0);
-    }
-  }
-}
-
-@media screen and (max-width: 640px) {
-  .empty-state {
-    margin: 16px -16px;
-    border-radius: 0;
-    border-left: none;
-    border-right: none;
-    padding: 40px 20px;
-
-    .empty-icon {
-      width: 56px;
-      height: 56px;
-      font-size: 24px;
-      margin-bottom: 16px;
-    }
-
-    h3 {
-      font-size: 18px;
-      margin-bottom: 8px;
-    }
-
-    p {
-      font-size: 14px;
-      margin-bottom: 20px;
-    }
-
-    .btn-primary {
       width: 100%;
       justify-content: center;
     }

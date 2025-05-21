@@ -17,67 +17,52 @@
       @filter="status => updateFilters({ status })"
     />
 
-    <skelaton-loader v-if="isLoading('projects')" :lines="loaderLines" type="card"></skelaton-loader>
-
-    <div v-else-if="!projects.length" class="empty-state">
-      <div class="empty-state-content">
-        <span class="empty-icon">��</span>
-        <h3>{{ hasActiveFilters ? 'No Projects Found' : 'No Projects Yet' }}</h3>
-        <p v-if="hasActiveFilters">
-          No projects match your current filters. Try adjusting your search or filter criteria.
-        </p>
-        <p v-else>
-          Get started by creating your first project to organize your tasks!
-        </p>
-        <button class="btn btn-primary" @click="openAddModal">
-          <span class="btn-icon">+</span>
-          Create Project
-        </button>
-      </div>
-    </div>
-
-    <ul v-else class="project-items">
-      <li v-for="project in projects" :key="project._id" class="project-item">
-        <div class="project-item-content" @click="openProject(project)">
+    <data-table
+      :items="projects"
+      :loading="isLoading('projects')"
+      :current-page="currentPage"
+      :total-pages="totalPages"
+      :empty-icon="'📋'"
+      :empty-title="hasActiveFilters ? 'No Projects Found' : 'No Projects Yet'"
+      :empty-description="hasActiveFilters ? 'No projects match your current filters. Try adjusting your search or filter criteria.' : 'Get started by creating your first project to organize your tasks!'"
+      :add-button-text="'Create Project'"
+      @click="openProject"
+      @edit="openEditModal"
+      @delete="confirmDelete"
+      @add="openAddModal"
+      @page-change="handlePageChange"
+    >
+      <template #card-content="{ item: project }">
+        <div class="card-header">
           <h3>
             {{ project.name }}
             <span v-if="project.completed" class="badge badge-completed">✔ Completed</span>
             <span v-else-if="project.inProgress" class="badge badge-inprogress">⏳ In Progress</span>
             <span v-else class="badge badge-pending">📋 Pending</span>
           </h3>
+        </div>
+        <div class="card-body">
           <p>{{ project.description }}</p>
         </div>
-
-        <div class="actions">
-          <button @click="openEditModal(project)" title="Edit project">✏️</button>
-          <button @click="confirmDelete(project)" title="Delete project">🗑️</button>
-        </div>
-      </li>
-    </ul>
-
-    <Pagination
-        v-if="projects.length"
-        :currentPage="currentPage"
-        :totalPages="totalPages"
-        @page-change="handlePageChange"
-    />
+      </template>
+    </data-table>
 
     <!-- Add/Edit Project Modal -->
     <ProjectModal
-        :isOpen="isModalOpen"
-        :project="selectedProject"
-        @save="handleSave"
-        @close="closeModal"
+      :isOpen="isModalOpen"
+      :project="selectedProject"
+      @save="handleSave"
+      @close="closeModal"
     />
 
     <!-- Delete Confirmation Dialog -->
     <DeleteDialog
-        v-if="projectToDelete"
-        :isOpen="isDeleteModalOpen"
-        :item="projectToDelete"
-        type="project"
-        @confirm="handleDeleteProject"
-        @cancel="closeDeleteModal"
+      v-if="projectToDelete"
+      :isOpen="isDeleteModalOpen"
+      :item="projectToDelete"
+      type="project"
+      @confirm="handleDeleteProject"
+      @cancel="closeDeleteModal"
     />
   </div>
 </template>
@@ -86,9 +71,8 @@
 import { mapState, mapActions, mapGetters } from 'vuex'
 import ProjectModal from '@/components/projects/modals/ProjectModal.vue'
 import DeleteDialog from '@/components/modals/DeleteConfirmationDialog.vue'
-import Pagination from '@/components/Pagination.vue'
-import SkelatonLoader from '@/components/SkelatonLoader.vue'
 import StatusFilter from '@/components/StatusFilter.vue'
+import DataTable from '@/components/DataTable.vue'
 import { showToast } from '@/common'
 
 export default {
@@ -96,9 +80,8 @@ export default {
   components: {
     ProjectModal,
     DeleteDialog,
-    Pagination,
-    SkelatonLoader,
-    StatusFilter
+    StatusFilter,
+    DataTable
   },
   data() {
     return {
