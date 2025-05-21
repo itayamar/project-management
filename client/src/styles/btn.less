@@ -17,6 +17,48 @@
   }
 }
 
+/* Action button - Used for primary actions like Add/Create */
+.btn-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 6px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+
+  .icon-btn {
+    font-size: 20px;
+    line-height: 1;
+    margin-top: -2px;
+  }
+
+  .text-btn {
+    line-height: 1;
+  }
+
+  &:hover {
+    background: #dbeafe;
+    transform: translateX(-2px);
+  }
+
+  &:active {
+    transform: translateX(0);
+  }
+
+  @media screen and (max-width: 640px) {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 /* Icon Button - Base class for all icon buttons */
 .icon-btn {
   display: flex;

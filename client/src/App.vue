@@ -1,5 +1,6 @@
 <template>
   <div id="app">
+    <Notifications />
     <main class="main-content">
       <router-view />
     </main>
@@ -7,16 +8,27 @@
 </template>
 
 <script>
+import Notifications from '@/components/Notifications.vue';
+
 export default {
-  name: 'App'
+  name: 'App',
+  components: {
+    Notifications
+  },
+  created() {
+    // Initialize WebSocket connections
+    this.$store.dispatch('project/initializeWebSocket');
+    this.$store.dispatch('task/initializeWebSocket');
+  }
 };
 </script>
 
 <style lang="less">
 #app {
-  font-family: Helvetica, Arial, sans-serif;
-  color: #151718;
-  line-height: 1.6;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: #2c3e50;
   min-height: 100vh;
   background: #f9fafb;
 

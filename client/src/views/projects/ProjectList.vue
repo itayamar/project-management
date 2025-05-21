@@ -2,8 +2,9 @@
   <div class="project-list container">
     <div class="header-section">
       <h1>Projects</h1>
-      <button class="btn btn-primary" @click="openAddModal">
-        Create Project
+      <button class="btn-add" @click="openAddModal">
+        <span class="icon-btn">+</span>
+        <span class="text-btn">Create Project</span>
       </button>
     </div>
 
@@ -73,7 +74,6 @@ import ProjectModal from '@/components/projects/modals/ProjectModal.vue'
 import DeleteDialog from '@/components/modals/DeleteConfirmationDialog.vue'
 import StatusFilter from '@/components/StatusFilter.vue'
 import DataTable from '@/components/DataTable.vue'
-import { showToast } from '@/common'
 
 export default {
   name: 'ProjectList',
@@ -186,13 +186,12 @@ export default {
       try {
         if (project._id) {
           await this.updateProject({projectId: project._id, projectData: project})
-          showToast(this.$toasted, 'Project updated successfully!')
         } else {
           await this.createProject(project)
-          showToast(this.$toasted, 'Project added successfully!')
         }
+        this.closeModal()
       } catch (err) {
-        showToast(this.$toasted, `Error: ${err.message}`, 'error')
+        console.error('Error saving project:', err)
       }
     },
 
@@ -210,9 +209,6 @@ export default {
       if (!this.projectToDelete) return
       try {
         await this.deleteProject(this.projectToDelete._id)
-        showToast(this.$toasted, 'Project deleted successfully!')
-      } catch (err) {
-        showToast(this.$toasted, `Error: ${err.message}`, 'error')
       } finally {
         this.closeDeleteModal()
       }
@@ -255,37 +251,6 @@ export default {
     font-weight: 700;
     color: #111827;
     margin: 0;
-  }
-
-  .btn-primary {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 8px;
-    background: #2563eb;
-    color: white;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    white-space: nowrap;
-
-    &:hover {
-      background: #1d4ed8;
-      transform: translateY(-1px);
-    }
-
-    &:active {
-      transform: translateY(0);
-    }
-
-    &::before {
-      content: "+";
-      font-size: 18px;
-      line-height: 1;
-    }
   }
 }
 

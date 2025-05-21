@@ -1,12 +1,14 @@
 // projects store
 import Vue from "vue";
 import {fetchProjects, createProject, updateProject, fetchProject, deleteProject} from "@/services/projects";
+import wsService, { WS_EVENTS } from "@/services/websocket";
+import router from "@/router";
 
 export default {
   namespaced: true,
   state: {
     projects: [],
-    currentProject: null,
+    currentViewedProjectId: null, // Single source of truth for current project
     totalProjects: 0,
     projectCounts: {
       in_progress: 0,
@@ -18,42 +20,32 @@ export default {
       status: '',
       page: 1,
       limit: 20
-    }
+    },
+    lastActionId: null, // Track our last action
+    lastActionIdTimeout: null // Track the timeout for lastActionId
   },
   mutations: {
     SET_PROJECTS(state, projects) {
       state.projects = projects;
     },
     SET_PROJECT_COUNTS(state, counts) {
-      state.projectCounts = {
-        in_progress: counts?.in_progress || 0,
-        completed: counts?.completed || 0,
-        total: counts?.total || 0
-      };
+      state.projectCounts = counts;
     },
-    SET_CURRENT_PROJECT(state, project) {
-      state.currentProject = project
+    SET_TOTAL_PROJECTS(state, total) {
+      state.totalProjects = total;
     },
     ADD_PROJECT(state, project) {
-      state.projects.push(project)
-    },
-    SET_TOTAL_PROJECTS(state, totalProjects) {
-      state.totalProjects = totalProjects;
-    },
-    UPDATE_CURRENT_PROJECT(state, updatedProject) {
-      state.currentProject = { ...state.currentProject, ...updatedProject };
+      state.projects.unshift(project);
+      state.totalProjects++;
     },
     UPDATE_PROJECT(state, updatedProject) {
-      const index = state.projects.findIndex(p => p._id === updatedProject._id)
+      const index = state.projects.findIndex(p => p._id === updatedProject._id);
       if (index !== -1) {
-        Vue.set(state.projects, index, updatedProject)
+        Vue.set(state.projects, index, updatedProject);
       }
     },
     REMOVE_PROJECT(state, projectId) {
-      state.projects = state.projects.filter(p => p._id !== projectId)
-    },
-    CLEAR_CURRENT_PROJECT(state) {
-      state.currentProject = null;
+      state.projects = state.projects.filter(p => p._id !== projectId);
     },
     SET_FILTERS(state, filters) {
       state.filters = { ...state.filters, ...filters };
@@ -65,6 +57,19 @@ export default {
         page: 1,
         limit: 20
       };
+    },
+    SET_LAST_ACTION(state, id) {
+      state.lastActionId = id;
+      // Clear the ID after 2 seconds to prevent stale state
+      if (state.lastActionIdTimeout) {
+        clearTimeout(state.lastActionIdTimeout);
+      }
+      state.lastActionIdTimeout = setTimeout(() => {
+        state.lastActionId = null;
+      }, 2000);
+    },
+    SET_CURRENT_VIEWED_PROJECT(state, projectId) {
+      state.currentViewedProjectId = projectId;
     }
   },
   actions: {
@@ -109,62 +114,188 @@ export default {
       commit('RESET_FILTERS');
       return dispatch('fetchProjects');
     },
-    async fetchProject({ commit }, projectId) {
-      commit('SET_LOADING', { type: 'project', value: true }, { root: true })
-      commit('SET_ERROR', null, { root: true })
+    async fetchProject({ commit, state }, projectId) {
+      commit('SET_LOADING', { type: 'project', value: true }, { root: true });
+      commit('SET_ERROR', null, { root: true });
+      commit('SET_CURRENT_VIEWED_PROJECT', projectId);
 
       try {
-        const project = await fetchProject(projectId)
-        commit('SET_CURRENT_PROJECT', project)
-        return project
-      } catch (error) {
-        commit('SET_ERROR', error.message, { root: true })
-        throw error
-      } finally {
-        commit('SET_LOADING', { type: 'project', value: false }, { root: true })
-      }
-    },
-    async createProject({ commit }, projectData) {
-      try {
-        const project = await createProject(projectData)
-        commit('ADD_PROJECT', project)
-        return project
-      } catch (error) {
-        commit('SET_ERROR', error.message, { root: true })
-        throw error
-      }
-    },
-    async updateProject({ commit, state }, { projectId, projectData }) {
-      try {
-        const updatedProject = await updateProject(projectId, projectData);
-        // Update in projects list
-        commit('UPDATE_PROJECT', updatedProject);
-        // Update currentProject if it's the one being edited
-        if (state.currentProject?._id === updatedProject._id) {
-          commit('UPDATE_CURRENT_PROJECT', updatedProject);
+        // Always fetch from API to ensure we have the latest data
+        const project = await fetchProject(projectId);
+        
+        // Update or add the project in the store
+        const index = state.projects.findIndex(p => p._id === projectId);
+        if (index !== -1) {
+          commit('UPDATE_PROJECT', project);
+        } else {
+          commit('ADD_PROJECT', project);
         }
+        
+        return project;
+      } catch (error) {
+        commit('SET_ERROR', error.message, { root: true });
+        throw error;
+      } finally {
+        commit('SET_LOADING', { type: 'project', value: false }, { root: true });
+      }
+    },
+    async createProject({ commit, dispatch }, projectData) {
+      try {
+        const project = await createProject(projectData);
+        commit('ADD_PROJECT', project);
+        
+        dispatch('notifications/showNotification', {
+          type: 'project',
+          message: `Project "${project.name}" has been created successfully`,
+          notificationType: 'success',
+          autoClose: true
+        }, { root: true });
+        
+        return project;
+      } catch (error) {
+        dispatch('notifications/showNotification', {
+          type: 'project',
+          message: `Failed to create project: ${error.message}`,
+          notificationType: 'error',
+          autoClose: true
+        }, { root: true });
+        commit('SET_ERROR', error.message, { root: true });
+        throw error;
+      }
+    },
+    async updateProject({ commit, dispatch }, { projectId, projectData }) {
+      try {
+        dispatch('notifications/setLastAction', projectId, { root: true });
+        const updatedProject = await updateProject(projectId, projectData);
+        
+        commit('UPDATE_PROJECT', updatedProject);
+
+        dispatch('notifications/showNotification', {
+          type: 'project',
+          message: `Project "${updatedProject.name}" has been updated successfully`,
+          notificationType: 'success',
+          autoClose: true
+        }, { root: true });
 
         return updatedProject;
       } catch (error) {
+        dispatch('notifications/showNotification', {
+          type: 'project',
+          message: `Failed to update project: ${error.message}`,
+          notificationType: 'error',
+          autoClose: true
+        }, { root: true });
         commit('SET_ERROR', error.message, { root: true });
         throw error;
       }
     },
-    async deleteProject({ commit, state }, projectId) {
+    async deleteProject({ commit, dispatch, state }, projectId) {
       try {
+        dispatch('notifications/setLastAction', projectId, { root: true });
+        const projectToDelete = state.projects.find(p => p._id === projectId);
+        const projectName = projectToDelete?.name || 'Project';
+
         await deleteProject(projectId);
         commit('REMOVE_PROJECT', projectId);
-
-        // If the deleted project is the one currently being viewed, clear it
-        if (state.currentProject?._id === projectId) {
-          commit('CLEAR_CURRENT_PROJECT');
+        
+        if (state.currentViewedProjectId === projectId) {
+          commit('SET_CURRENT_VIEWED_PROJECT', null);
         }
+
+        dispatch('notifications/showNotification', {
+          type: 'project',
+          message: `Project "${projectName}" has been deleted successfully`,
+          notificationType: 'success',
+          autoClose: true
+        }, { root: true });
+
         return true;
       } catch (error) {
+        dispatch('notifications/showNotification', {
+          type: 'project',
+          message: `Failed to delete project: ${error.message}`,
+          notificationType: 'error',
+          autoClose: true
+        }, { root: true });
         commit('SET_ERROR', error.message, { root: true });
         throw error;
       }
     },
-  },
+    // Initialize WebSocket listeners
+    initializeWebSocket({ commit, state, dispatch, rootState }) {
+      wsService.connect();
 
+      // Listen for project updates
+      wsService.subscribe(WS_EVENTS.PROJECT_UPDATED, (data) => {
+        const project = data;
+        if (project && project._id) {
+          commit('UPDATE_PROJECT', project);
+
+          const lastActionId = rootState.notifications.lastActionId;
+          if (lastActionId !== project._id && 
+              (!state.currentViewedProjectId || state.currentViewedProjectId === project._id)) {
+            dispatch('notifications/showNotification', {
+              type: 'project',
+              message: `Project "${project.name}" has been updated by another user`,
+              notificationType: 'info',
+              autoClose: false
+            }, { root: true });
+          }
+        }
+      });
+
+      // Listen for new projects
+      wsService.subscribe(WS_EVENTS.PROJECT_CREATED, (data) => {
+        const project = data;
+        if (project && project.name) {
+          commit('ADD_PROJECT', project);
+          const lastActionId = rootState.notifications.lastActionId;
+          if (lastActionId !== project._id && !state.currentViewedProjectId) {
+            dispatch('notifications/showNotification', {
+              type: 'project',
+              message: `New project "${project.name}" has been created by another user`,
+              notificationType: 'info',
+              autoClose: false
+            }, { root: true });
+          }
+          dispatch('fetchProjects');
+        }
+      });
+
+      // Listen for project deletions
+      wsService.subscribe(WS_EVENTS.PROJECT_DELETED, (data) => {
+        const projectId = data;
+        const deletedProject = state.projects.find(p => p._id === projectId);
+        
+        if (deletedProject) {
+          const projectName = deletedProject.name;
+          commit('REMOVE_PROJECT', projectId);
+          
+          if (state.currentViewedProjectId === projectId) {
+            commit('SET_CURRENT_VIEWED_PROJECT', null);
+            if (router.currentRoute.path.includes(`/projects/${projectId}`)) {
+              router.push('/projects');
+            }
+          }
+
+          const lastActionId = rootState.notifications.lastActionId;
+          if (lastActionId !== projectId && 
+              (!state.currentViewedProjectId || state.currentViewedProjectId === projectId)) {
+            dispatch('notifications/showNotification', {
+              type: 'project',
+              message: `Project "${projectName}" has been deleted by another user`,
+              notificationType: 'info',
+              autoClose: false
+            }, { root: true });
+          }
+
+          dispatch('fetchProjects');
+        }
+      });
+    }
+  },
+  getters: {
+    currentProjectId: state => state.currentViewedProjectId,
+    currentProject: state => state.projects.find(p => p._id === state.currentViewedProjectId)
+  }
 };

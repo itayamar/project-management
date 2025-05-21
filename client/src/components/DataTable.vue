@@ -12,7 +12,6 @@
         <h3>{{ emptyTitle }}</h3>
         <p>{{ emptyDescription }}</p>
         <button v-if="showAddButton" class="btn btn-primary" @click="$emit('add')">
-          <span class="btn-icon">+</span>
           {{ addButtonText }}
         </button>
       </div>

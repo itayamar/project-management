@@ -47,7 +47,12 @@
         <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
 
         <div class="buttons">
-          <button type="submit" class="btn btn-primary">
+          <button 
+            type="submit" 
+            class="btn btn-primary"
+            :disabled="!hasChanges"
+            :class="{ 'btn-disabled': !hasChanges }"
+          >
             {{ task ? 'Save Changes' : 'Add Task' }}
           </button>
           <button type="button" class="btn btn-secondary" @click="close">
@@ -83,7 +88,22 @@ export default {
         state: 'CREATED',
         notes: ''
       },
+      originalTask: null,
       errorMessage: ''
+    }
+  },
+  computed: {
+    hasChanges() {
+      // For new tasks, always enable the button
+      if (!this.task) return true;
+      
+      // For existing tasks, compare with original values
+      return this.originalTask && (
+        this.localTask.description !== this.originalTask.description ||
+        this.localTask.dueDate !== this.originalTask.dueDate ||
+        this.localTask.state !== this.originalTask.state ||
+        this.localTask.notes !== this.originalTask.notes
+      );
     }
   },
   watch: {
@@ -91,26 +111,30 @@ export default {
       immediate: true,
       handler(newTask) {
         if (newTask) {
-          this.localTask = {
+          const formattedTask = {
             ...newTask,
             dueDate: newTask.dueDate?.split('T')[0] || '',
             state: newTask.state || 'CREATED',
             notes: newTask.notes || ''
-          }
+          };
+          this.localTask = { ...formattedTask };
+          this.originalTask = { ...formattedTask };
         } else {
-          const today = new Date().toISOString().split('T')[0]
-          this.localTask = {
+          const today = new Date().toISOString().split('T')[0];
+          const newTaskData = {
             dueDate: today,
             state: 'CREATED',
             notes: ''
-          }
+          };
+          this.localTask = { ...newTaskData };
+          this.originalTask = null;
         }
-        this.errorMessage = ''
+        this.errorMessage = '';
       }
     },
     isOpen(open) {
       if (!open) {
-        this.errorMessage = ''
+        this.errorMessage = '';
       }
     }
   },
@@ -156,5 +180,16 @@ textarea {
   font-size: 14px;
   box-sizing: border-box;
   resize: vertical;
+}
+
+.btn-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.error-message {
+  color: #dc2626;
+  margin-bottom: 16px;
+  font-size: 14px;
 }
 </style>

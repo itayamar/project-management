@@ -2,6 +2,7 @@ import Vue from "vue";
 import Vuex from "vuex";
 import project from './modules/project'
 import task from './modules/task'
+import notifications from './modules/notifications'
 
 Vue.use(Vuex);
 
@@ -16,7 +17,8 @@ export default new Vuex.Store({
   },
   modules: {
     project,
-    task
+    task,
+    notifications
   },
   mutations: {
     SET_LOADING(state, { type, value }) {

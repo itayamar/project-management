@@ -72,7 +72,7 @@ router
                                     { $size: "$tasks" },
                                 ],
                             },
-                            false, // if no tasks, not completed
+                            false,
                         ],
                     },
                 },
@@ -118,7 +118,7 @@ router
                         },
                         allTasksCompleted: {
                             $cond: [
-                                { $gt: [{ $size: "$tasks" }, 0] }, // if has tasks
+                                { $gt: [{ $size: "$tasks" }, 0] },
                                 {
                                     $eq: [
                                         {
@@ -130,10 +130,10 @@ router
                                                 },
                                             },
                                         },
-                                        0, // all tasks should be completed
+                                        0,
                                     ],
                                 },
-                                false, // if no tasks, not completed
+                                false,
                             ],
                         },
                     },
@@ -187,10 +187,13 @@ router
         }
     })
   // create new
-  .post((req, res, next) => {
-    Project.create(req.body)
-      .then((project) => res.send(project))
-      .catch(next);
+  .post(async (req, res, next) => {
+    try {
+      const project = await Project.create(req.body);
+      res.send(project);
+    } catch (err) {
+      next(err);
+    }
   });
 
 router
@@ -204,20 +207,26 @@ router
       .catch(next);
   })
   // update
-  .put((req, res, next) => {
-    Project.findByIdAndUpdate(req.params.id, req.body, { new: true })
-      .lean()
-      .orFail()
-      .then((project) => res.send(project))
-      .catch(next);
+  .put(async (req, res, next) => {
+    try {
+      const project = await Project.findByIdAndUpdate(req.params.id, req.body, { new: true })
+        .lean()
+        .orFail();
+      res.send(project);
+    } catch (err) {
+      next(err);
+    }
   })
   // delete
-  .delete((req, res, next) => {
-    Project.findByIdAndDelete(req.params.id)
-      .lean()
-      .orFail()
-      .then(() => res.send(req.params))
-      .catch(next);
+  .delete(async (req, res, next) => {
+    try {
+      await Project.findByIdAndDelete(req.params.id)
+        .lean()
+        .orFail();
+      res.send(req.params);
+    } catch (err) {
+      next(err);
+    }
   });
 
 export default router;

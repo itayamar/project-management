@@ -19,8 +19,9 @@
             </span>
           </button>
         </div>
-        <button class="btn btn-add" @click="openCreateTaskModal">
-          ➕ Add Task
+        <button class="btn-add" @click="openCreateTaskModal">
+          <span class="icon-btn">+</span>
+          <span class="text-btn">Add Task</span>
         </button>
       </div>
     </div>
@@ -139,7 +140,6 @@ import DeleteModal from '@/components/modals/DeleteConfirmationDialog.vue'
 import TaskModal from '@/components/tasks/modals/TaskModal.vue'
 import StatusFilter from '@/components/StatusFilter.vue'
 import DataTable from '@/components/DataTable.vue'
-import { showToast } from '@/common'
 
 export default {
   name: 'TaskList',
@@ -403,16 +403,12 @@ export default {
         this.updateTask({
           taskId: this.taskToEdit._id,
           taskData
-        }).then(() => {
-          showToast(this.$toasted, 'Task updated successfully!')
         }).catch(err => {
-          showToast(this.$toasted, `Error: ${err.message}`, 'error')
+          console.error('Error updating task:', err)
         })
       } else {
-        this.createTask(taskData).then(() => {
-          showToast(this.$toasted, 'Task created successfully!')
-        }).catch(err => {
-          showToast(this.$toasted, `Error: ${err.message}`, 'error')
+        this.createTask(taskData).catch(err => {
+          console.error('Error creating task:', err)
         })
       }
 
@@ -429,11 +425,9 @@ export default {
 
       try {
         await this.deleteTask(this.taskToDelete._id)
-        showToast(this.$toasted, 'Task deleted successfully!')
         this.closeDeleteModal()
       } catch (err) {
         console.error('Error deleting task:', err)
-        showToast(this.$toasted, `Error: ${err.message}`, 'error')
       }
     },
 
@@ -471,11 +465,10 @@ export default {
           state: task.state
         }
       }).then(() => {
-        showToast(this.$toasted, 'Task status updated!')
         // Reload tasks to get updated counts
         this.loadTasks()
       }).catch(err => {
-        showToast(this.$toasted, `Error: ${err.message}`, 'error')
+        console.error('Error updating task status:', err)
       })
     },
     getTaskCountByStatus(status) {
@@ -620,145 +613,141 @@ export default {
     }
   }
 
-  .btn-add {
-    white-space: nowrap;
-  }
-}
-
-.task-card-header {
-  padding: 12px 16px;
-  background-color: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.task-status {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.overdue-badge {
-  background-color: #ef4444;
-  color: white;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.status-select-wrapper {
-  padding: 4px 12px;
-  border-radius: 16px;
-  min-width: 120px;
-  position: relative;
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-  &:hover {
-    filter: brightness(1.1);
-
-    .select-icon {
-      transform: translateY(1px);
-    }
+  .task-card-header {
+    padding: 12px 16px;
+    background-color: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
   }
 
-  &:active {
-    filter: brightness(0.95);
+  .task-status {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
   }
 
-  .select-icon {
-    position: absolute;
-    right: 8px;
-    color: rgba(255, 255, 255, 0.8);
-    font-size: 12px;
-    pointer-events: none;
-    transition: transform 0.2s ease;
-  }
-}
-
-.status-select {
-  background: transparent;
-  border: none;
-  color: #fff;
-  font-weight: 600;
-  font-size: 0.875rem;
-  outline: none;
-  appearance: none;
-  cursor: pointer;
-  width: 100%;
-  padding-right: 24px;
-  z-index: 1;
-  
-  option {
-    background: white;
-    color: #374151;
-    font-weight: 500;
-  }
-}
-
-.task-due-date {
-  font-size: 0.875rem;
-  color: #6b7280;
-
-  &.text-danger {
-    color: #ef4444;
-    font-weight: 500;
-  }
-}
-
-.task-card-content {
-  padding: 16px;
-  flex: 1;
-
-  .task-description, .task-notes {
-    position: relative;
-    margin: 0;
-    word-break: break-word;
-    overflow: hidden;
-    
-    &:not(.is-expanded) {
-      display: -webkit-box;
-      -webkit-line-clamp: 3;
-      -webkit-box-orient: vertical;
-      max-height: 4.5em;
-    }
-  }
-
-  .task-description {
-    font-size: 0.9375rem;
-    color: #111827;
-    line-height: 1.5;
-    margin-bottom: 8px;
-  }
-
-  .task-notes {
-    font-size: 0.875rem;
-    color: #6b7280;
-    line-height: 1.5;
-
-    &.text-muted {
-      color: #9ca3af;
-      font-style: italic;
-    }
-  }
-
-  .expand-btn {
-    background: none;
-    border: none;
-    color: #2563eb;
-    font-size: 0.875rem;
+  .overdue-badge {
+    background-color: #ef4444;
+    color: white;
     padding: 4px 8px;
-    cursor: pointer;
-    margin-left: 4px;
     border-radius: 4px;
+    font-size: 0.875rem;
     font-weight: 500;
+  }
+
+  .status-select-wrapper {
+    padding: 4px 12px;
+    border-radius: 16px;
+    min-width: 120px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
     transition: all 0.2s ease;
 
     &:hover {
-      background: #eff6ff;
+      filter: brightness(1.1);
+
+      .select-icon {
+        transform: translateY(1px);
+      }
+    }
+
+    &:active {
+      filter: brightness(0.95);
+    }
+
+    .select-icon {
+      position: absolute;
+      right: 8px;
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 12px;
+      pointer-events: none;
+      transition: transform 0.2s ease;
+    }
+  }
+
+  .status-select {
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.875rem;
+    outline: none;
+    appearance: none;
+    cursor: pointer;
+    width: 100%;
+    padding-right: 24px;
+    z-index: 1;
+    
+    option {
+      background: white;
+      color: #374151;
+      font-weight: 500;
+    }
+  }
+
+  .task-due-date {
+    font-size: 0.875rem;
+    color: #6b7280;
+
+    &.text-danger {
+      color: #ef4444;
+      font-weight: 500;
+    }
+  }
+
+  .task-card-content {
+    padding: 16px;
+    flex: 1;
+
+    .task-description, .task-notes {
+      position: relative;
+      margin: 0;
+      word-break: break-word;
+      overflow: hidden;
+      
+      &:not(.is-expanded) {
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        max-height: 4.5em;
+      }
+    }
+
+    .task-description {
+      font-size: 0.9375rem;
+      color: #111827;
+      line-height: 1.5;
+      margin-bottom: 8px;
+    }
+
+    .task-notes {
+      font-size: 0.875rem;
+      color: #6b7280;
+      line-height: 1.5;
+
+      &.text-muted {
+        color: #9ca3af;
+        font-style: italic;
+      }
+    }
+
+    .expand-btn {
+      background: none;
+      border: none;
+      color: #2563eb;
+      font-size: 0.875rem;
+      padding: 4px 8px;
+      cursor: pointer;
+      margin-left: 4px;
+      border-radius: 4px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+
+      &:hover {
+        background: #eff6ff;
+      }
     }
   }
 }

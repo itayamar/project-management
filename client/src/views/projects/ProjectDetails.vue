@@ -51,7 +51,6 @@ import ProjectModal from '@/components/projects/modals/ProjectModal.vue'
 import DeleteModal from '@/components/modals/DeleteConfirmationDialog.vue'
 import SkelatonLoader from '@/components/SkelatonLoader.vue'
 import ProjectHeader from '@/components/projects/ProjectHeader.vue'
-import { showToast } from '@/common'
 
 export default {
   components: {
@@ -76,7 +75,7 @@ export default {
   },
   computed: {
     project() {
-      return this.$store.state.project.currentProject
+      return this.$store.getters['project/currentProject']
     },
     ...mapGetters([
       'isLoading',
@@ -85,7 +84,11 @@ export default {
     ])
   },
   created() {
-    this.loadProject()
+    this.loadProject();
+  },
+  beforeDestroy() {
+    // Reset current viewed project
+    this.$store.commit('project/SET_CURRENT_VIEWED_PROJECT', null);
   },
   methods: {
     ...mapActions('project', {
@@ -96,14 +99,14 @@ export default {
 
     async loadProject() {
       try {
-        await this.fetchProject(this.id)
+        await this.fetchProject(this.id);
       } catch (error) {
-        console.error('Error loading project:', error)
+        console.error('Error loading project:', error);
       }
     },
 
     goBack() {
-      this.$router.push('/projects')
+      this.$router.push('/projects');
     },
 
     editProject() {
@@ -116,10 +119,9 @@ export default {
           projectId: this.id,
           projectData: projectForm
         })
-        showToast(this.$toasted, 'Project updated successfully!')
         this.closeEditModal()
       } catch (error) {
-        showToast(this.$toasted, `Error: ${error.message}`, 'error')
+        console.error('Error updating project:', error)
       }
     },
 
@@ -130,10 +132,9 @@ export default {
     async deleteProject() {
       try {
         await this.deleteProject(this.id)
-        showToast(this.$toasted, 'Project deleted successfully!')
         this.$router.push('/projects')
       } catch (error) {
-        showToast(this.$toasted, `Error: ${error.message}`, 'error')
+        console.error('Error deleting project:', error)
       }
     },
 
