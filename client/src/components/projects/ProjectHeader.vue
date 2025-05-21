@@ -1,12 +1,14 @@
 <template>
   <div class="project-header">
-    <div class="header-top">
-      <div class="actions-inline">
-        <button class="icon-btn edit" @click="$emit('edit')" title="Edit Project">✏️</button>
-        <button class="icon-btn delete" @click="$emit('delete')" title="Delete Project">🗑️</button>
+    <div class="header-content">
+      <div class="title-section">
+        <div class="actions">
+          <button class="icon-btn edit-btn" @click="$emit('edit')" title="Edit Project">✏️</button>
+          <button class="icon-btn delete-btn" @click="$emit('delete')" title="Delete Project">🗑️</button>
+        </div>
         <h1 class="title">{{ project.name }}</h1>
       </div>
-      <p class="description">{{ project.description }}</p>
+      <p class="description">{{ project.description || 'No description provided' }}</p>
     </div>
   </div>
 </template>
@@ -26,65 +28,77 @@ export default {
 <style scoped lang="less">
 .project-header {
   margin-bottom: 32px;
+  background: white;
+  border-radius: 12px;
+  padding: 32px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
 
-  .header-top {
-    display: flex;
-    flex-direction: column;
+.header-content {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.title-section {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 4px 0;
+}
+
+.title {
+  font-size: 32px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+  line-height: 1.2;
+  word-break: break-word;
+  flex: 1;
+}
+
+.description {
+  font-size: 16px;
+  color: #4b5563;
+  margin: 0;
+  line-height: 1.6;
+  word-break: break-word;
+  max-width: 800px;
+
+  &:empty::before {
+    content: 'No description provided';
+    color: #9ca3af;
+    font-style: italic;
+  }
+}
+
+@media (max-width: 640px) {
+  .project-header {
+    margin: -16px;
+    margin-bottom: 24px;
+    padding: 20px 16px;
+    border-radius: 0;
   }
 
-  .actions-inline {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-
-    .icon-btn {
-      border: none;
-      border-radius: 50%;
-      width: 36px;
-      height: 36px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 16px;
-      cursor: pointer;
-      transition: transform 0.1s ease, background 0.2s ease;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
-
-      &:hover {
-        transform: scale(1.05);
-      }
-
-      &.edit {
-        background: #10b981;
-        color: white;
-
-        &:hover {
-          background: #059669;
-        }
-      }
-
-      &.delete {
-        background: #bfa5a5;
-        color: white;
-
-        &:hover {
-          background: #dc2626;
-        }
-      }
-    }
+  .title-section {
+    margin-bottom: 16px;
+    gap: 8px;
   }
 
   .title {
-    font-size: 32px;
-    font-weight: 700;
-    color: #111827;
-    margin: 0;
+    font-size: 24px;
   }
 
   .description {
-    font-size: 18px;
-    color: #4b5563;
-    margin-top: 4px;
+    font-size: 15px;
+    padding-top: 16px;
+    border-top: 1px solid #e5e7eb;
   }
 }
 </style>

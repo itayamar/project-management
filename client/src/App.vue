@@ -1,40 +1,47 @@
 <template>
   <div id="app">
-    <div class="master-layout">
-      <aside>
-        <navigation />
-      </aside>
-      <main>
-        <router-view />
-      </main>
-    </div>
+    <main class="main-content">
+      <router-view />
+    </main>
   </div>
 </template>
+
 <script>
-import Navigation from "@/components/Navigation.vue";
 export default {
-  components: {
-    Navigation,
-  },
+  name: 'App'
 };
 </script>
+
 <style lang="less">
 #app {
   font-family: Helvetica, Arial, sans-serif;
   color: #151718;
   line-height: 1.6;
+  min-height: 100vh;
+  background: #f9fafb;
+
   a {
     text-decoration: none;
   }
-  .master-layout {
-    display: flex;
-    gap: 15px;
-    > aside {
-      min-width: 260px;
-    }
-    > main {
-      flex: 1;
-    }
+}
+
+.main-content {
+  max-width: 100%;
+  min-height: 100vh;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+// Add some base styles
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    padding: 12px;
   }
 }
 </style>

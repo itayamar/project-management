@@ -18,7 +18,8 @@
         >
       </div>
 
-      <div class="status-tabs">
+      <!-- Desktop tabs -->
+      <div class="status-tabs desktop-only">
         <button
           v-for="(label, status) in statusFilters"
           :key="status"
@@ -38,6 +39,24 @@
             {{ getTaskCountByStatus(status) }}
           </span>
         </button>
+      </div>
+
+      <!-- Mobile select -->
+      <div class="status-select-mobile mobile-only">
+        <select 
+          v-model="currentFilter"
+          @change="filterTasks(currentFilter)"
+          class="mobile-filter-select"
+        >
+          <option
+            v-for="(label, status) in statusFilters"
+            :key="status"
+            :value="status"
+          >
+            {{ label }} {{ status !== 'ALL' ? `(${getTaskCountByStatus(status)})` : '' }}
+          </option>
+        </select>
+        <span class="select-icon">▼</span>
       </div>
     </div>
 
@@ -92,21 +111,39 @@
               Due {{ formatDate(task.dueDate) }}
             </span>
           </div>
-          
-          <div class="task-actions">
-            <button class="action-btn edit-btn" @click="editTask(task)" title="Edit task">
-              ✏️
-            </button>
-            <button class="action-btn delete-btn" @click="confirmDeleteTask(task)" title="Delete task">
-              🗑️
-            </button>
-          </div>
         </div>
 
         <div class="task-card-content">
-          <p class="task-description">{{ task.description }}</p>
-          <p v-if="task.notes" class="task-notes">{{ task.notes }}</p>
+          <div class="task-description" :class="{ 'is-expanded': expandedTasks[task._id] }">
+            {{ task.description }}
+            <button 
+              v-if="isTextTruncated(task.description)" 
+              class="expand-btn"
+              @click="toggleExpand(task._id)"
+            >
+              {{ expandedTasks[task._id] ? 'Show less' : 'Show more' }}
+            </button>
+          </div>
+          <div v-if="task.notes" class="task-notes" :class="{ 'is-expanded': expandedTasks[task._id + '_notes'] }">
+            {{ task.notes }}
+            <button 
+              v-if="isTextTruncated(task.notes)" 
+              class="expand-btn"
+              @click="toggleExpand(task._id + '_notes')"
+            >
+              {{ expandedTasks[task._id + '_notes'] ? 'Show less' : 'Show more' }}
+            </button>
+          </div>
           <p v-else class="task-notes text-muted">No notes</p>
+        </div>
+
+        <div class="task-actions">
+          <button class="action-btn edit-btn" @click="editTask(task)" title="Edit task">
+            ✏️
+          </button>
+          <button class="action-btn delete-btn" @click="confirmDeleteTask(task)" title="Delete task">
+            🗑️
+          </button>
         </div>
       </div>
 
@@ -179,8 +216,16 @@ export default {
       },
       currentPage: 1,
       limit: 20,
-      searchTimeout: null
+      searchTimeout: null,
+      expandedTasks: {}
     }
+  },
+  mounted() {
+    this.checkStatusTabsScroll();
+    window.addEventListener('resize', this.checkStatusTabsScroll);
+  },
+  beforeDestroy() {
+    window.removeEventListener('resize', this.checkStatusTabsScroll);
   },
   computed: {
     ...mapState({
@@ -442,6 +487,19 @@ export default {
           filters: { search: searchValue }
         });
       }, 300);
+    },
+    isTextTruncated(text) {
+      return text && text.length > 150;
+    },
+    toggleExpand(taskId) {
+      this.$set(this.expandedTasks, taskId, !this.expandedTasks[taskId]);
+    },
+    checkStatusTabsScroll() {
+      const tabsContainer = this.$el.querySelector('.status-tabs');
+      if (tabsContainer) {
+        const hasScroll = tabsContainer.scrollWidth > tabsContainer.clientWidth;
+        tabsContainer.classList.toggle('has-scroll', hasScroll);
+      }
     }
   }
 }
@@ -450,6 +508,7 @@ export default {
 <style lang="less" scoped>
 .task-list-container {
   position: relative;
+  width: 100%;
 }
 
 .header-section {
@@ -457,17 +516,23 @@ export default {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1.5rem;
-}
+  gap: 16px;
+  flex-wrap: wrap;
 
-.section-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin: 0;
+  .section-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .btn-add {
+    white-space: nowrap;
+  }
 }
 
 .filters-section {
   margin-bottom: 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
+  position: relative;
 
   .search-box {
     margin-bottom: 1rem;
@@ -495,91 +560,18 @@ export default {
   }
 }
 
-.status-tabs {
-  display: flex;
-  gap: 4px;
-  overflow-x: auto;
-  padding-bottom: 1px;
-  
-  /* Hide scrollbar but keep functionality */
-  scrollbar-width: none;
-  &::-webkit-scrollbar {
-    display: none;
-  }
-}
-
-.status-tab {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  border: none;
-  background: transparent;
-  color: #6b7280;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  white-space: nowrap;
-  transition: all 0.2s ease;
-
-  &:hover {
-    color: #111827;
-  }
-
-  &.active {
-    color: #111827;
-    border-bottom-color: #2563eb;
-  }
-
-  .status-icon {
-    font-size: 10px;
-  }
-
-  .task-count {
-    background: #e5e7eb;
-    color: #4b5563;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 12px;
-  }
-
-  &.tab-created {
-    .status-icon { color: #3b82f6; }
-    &.active .task-count { background: #bfdbfe; color: #1e40af; }
-  }
-
-  &.tab-progress {
-    .status-icon { color: #f59e0b; }
-    &.active .task-count { background: #fde68a; color: #92400e; }
-  }
-
-  &.tab-completed {
-    .status-icon { color: #10b981; }
-    &.active .task-count { background: #a7f3d0; color: #065f46; }
-  }
-
-  &.tab-archived {
-    .status-icon { color: #6b7280; }
-    &.active .task-count { background: #e5e7eb; color: #111827; }
-  }
-}
-
-.task-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
 .task-card {
   background-color: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   overflow: hidden;
   transition: all 0.2s ease;
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
 
   &:hover {
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   }
 
   &.past-due {
@@ -588,9 +580,6 @@ export default {
 }
 
 .task-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   padding: 12px 16px;
   background-color: #f9fafb;
   border-bottom: 1px solid #e5e7eb;
@@ -600,6 +589,7 @@ export default {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .status-select-wrapper {
@@ -670,91 +660,287 @@ export default {
 
 .task-card-content {
   padding: 16px;
-}
+  flex: 1;
 
-.task-description {
-  margin: 0 0 8px;
-  font-size: 0.9375rem;
-  color: #111827;
-  line-height: 1.5;
-}
+  .task-description, .task-notes {
+    position: relative;
+    margin: 0;
+    word-break: break-word;
+    overflow: hidden;
+    
+    &:not(.is-expanded) {
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      max-height: 4.5em;
+    }
+  }
 
-.task-notes {
-  margin: 0;
-  font-size: 0.875rem;
-  color: #4b5563;
-  line-height: 1.4;
+  .task-description {
+    font-size: 0.9375rem;
+    color: #111827;
+    line-height: 1.5;
+    margin-bottom: 8px;
+  }
 
-  &.text-muted {
-    color: #9ca3af;
-    font-style: italic;
+  .task-notes {
+    font-size: 0.875rem;
+    color: #6b7280;
+    line-height: 1.5;
+
+    &.text-muted {
+      color: #9ca3af;
+      font-style: italic;
+    }
+  }
+
+  .expand-btn {
+    background: none;
+    border: none;
+    color: #2563eb;
+    font-size: 0.875rem;
+    padding: 4px 8px;
+    cursor: pointer;
+    margin-left: 4px;
+    border-radius: 4px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: #eff6ff;
+    }
   }
 }
 
 .task-actions {
   display: flex;
   gap: 8px;
+  padding: 12px 16px;
+  background-color: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+  justify-content: flex-end;
 }
 
-.action-btn {
+.status-tabs {
   display: flex;
+  gap: 4px;
+  padding: 0 1px 1px;
+  margin: 0 -1rem;
+  padding: 0 1rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  position: relative;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: #e5e7eb;
+  }
+  
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  &::before {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 1px;
+    width: 24px;
+    background: linear-gradient(to right, transparent, #f9fafb);
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  &.has-scroll::before {
+    opacity: 1;
+  }
+}
+
+.status-tab {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
+  gap: 8px;
+  padding: 12px 16px;
   border: none;
-  border-radius: 50%;
-  background: #f3f4f6;
+  background: transparent;
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
   transition: all 0.2s ease;
-  font-size: 16px;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 
   &:hover {
-    transform: scale(1.05);
+    color: #111827;
   }
 
-  &.edit-btn {
-    background: #10b981;
-    color: white;
+  &.active {
+    color: #111827;
+    border-bottom-color: #2563eb;
+  }
 
-    &:hover {
-      background: #059669;
+  .status-icon {
+    font-size: 8px;
+  }
+
+  .task-count {
+    background: #e5e7eb;
+    color: #4b5563;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    min-width: 24px;
+    text-align: center;
+  }
+
+  &.tab-all {
+    &.active .task-count { 
+      background: #e5e7eb; 
+      color: #111827; 
     }
   }
 
-  &.delete-btn {
-    background: #bfa5a5;
-    color: white;
+  &.tab-created {
+    .status-icon { color: #2563eb; }
+    &.active .task-count { 
+      background: #eff6ff; 
+      color: #1e40af; 
+    }
+  }
 
-    &:hover {
-      background: #dc2626;
+  &.tab-progress {
+    .status-icon { color: #f59e0b; }
+    &.active .task-count { 
+      background: #fef3c7; 
+      color: #92400e; 
+    }
+  }
+
+  &.tab-completed {
+    .status-icon { color: #10b981; }
+    &.active .task-count { 
+      background: #d1fae5; 
+      color: #065f46; 
+    }
+  }
+
+  &.tab-archived {
+    .status-icon { color: #6b7280; }
+    &.active .task-count { 
+      background: #f3f4f6; 
+      color: #374151; 
     }
   }
 }
 
-@media (max-width: 640px) {
-  .task-card-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
+/* Base display states */
+.desktop-only {
+  display: flex !important;
+}
+
+.mobile-only {
+  display: none !important;
+}
+
+.status-select-mobile {
+  position: relative;
+  margin-top: 8px;
+}
+
+/* Mobile styles */
+@media screen and (max-width: 640px) {
+  .desktop-only {
+    display: none !important;
+  }
+
+  .mobile-only {
+    display: block !important;
+  }
+
+  .filters-section {
+    margin: 0 -16px 1.5rem;
+    background: white;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 16px;
+    
+    .search-box {
+      margin: 0;
+      margin-bottom: 12px;
+      
+      input {
+        border-radius: 6px;
+      }
+    }
+  }
+
+  .status-select-mobile {
+    margin-top: 0;
+
+    .mobile-filter-select {
+      width: 100%;
+      padding: 12px 16px;
+      padding-right: 40px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: #f9fafb;
+      color: #111827;
+      font-size: 15px;
+      font-weight: 500;
+      appearance: none;
+      -webkit-appearance: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+
+      &:focus {
+        outline: none;
+        border-color: #2563eb;
+        background: white;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+      }
+    }
+
+    .select-icon {
+      position: absolute;
+      right: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #6b7280;
+      font-size: 12px;
+      pointer-events: none;
+      transition: transform 0.2s ease;
+    }
   }
 
   .task-actions {
-    width: 100%;
-    justify-content: flex-end;
-    padding-top: 8px;
-    border-top: 1px solid #e5e7eb;
+    padding: 8px 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-section {
+    flex-direction: column;
+    align-items: stretch;
+
+    .btn-add {
+      width: 100%;
+      justify-content: center;
+    }
   }
 
-  .action-btn {
-    width: 36px;
-    height: 36px;
-    font-size: 18px;
-  }
-
-  .status-tabs {
-    margin: 0 -1rem;
-    padding: 0 1rem;
+  .section-title {
+    text-align: center;
   }
 }
 

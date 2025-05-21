@@ -17,6 +17,59 @@
   }
 }
 
+/* Icon Button - Base class for all icon buttons */
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: #f3f4f6;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  padding: 0;
+
+  &:hover {
+    transform: scale(1.05);
+  }
+
+  &.edit-btn {
+    background: #10b981;
+    color: white;
+
+    &:hover {
+      background: #059669;
+    }
+  }
+
+  &.delete-btn {
+    background: #bfa5a5;
+    color: white;
+
+    &:hover {
+      background: #dc2626;
+    }
+  }
+}
+
+/* Action button - Used in task cards and other components */
+.action-btn {
+  .icon-btn(); // Inherit base icon button styles
+}
+
+/* Mobile styles */
+@media screen and (max-width: 640px) {
+  .icon-btn,
+  .action-btn {
+    width: 22px;
+    height: 22px;
+    font-size: 11px;
+  }
+}
+
 /* Variants */
 .btn-primary {
   background-color: #2563eb; // blue-600
