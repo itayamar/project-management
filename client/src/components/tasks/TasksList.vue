@@ -56,60 +56,14 @@
       :add-button-text="'Add Task'"
       :highlight-condition="isPastDue"
       @add="openCreateTaskModal"
-      @edit="editTask"
-      @delete="confirmDeleteTask"
     >
       <template #card-content="{ item: task }">
-        <div class="task-card-header">
-          <div class="task-status">
-            <div class="overdue-badge" v-if="isPastDue(task)">
-              ⚠️ Overdue
-            </div>
-            <div
-              class="status-select-wrapper"
-              :style="{ backgroundColor: getStatusBgColor(task.state) }"
-            >
-              <select
-                v-model="task.state"
-                @change="handleStatusChange(task)"
-                class="status-select"
-              >
-                <option value="CREATED">Created</option>
-                <option value="IN_PROGRESS">In Progress</option>
-                <option value="COMPLETED">Completed</option>
-                <option value="ARCHIVED">Archived</option>
-              </select>
-              <span class="select-icon">▼</span>
-            </div>
-            <span class="task-due-date" :class="{'text-danger': isPastDue(task)}">
-              Due {{ formatDate(task.dueDate) }}
-            </span>
-          </div>
-        </div>
-
-        <div class="task-card-content">
-          <div class="task-description" :class="{ 'is-expanded': expandedTasks[task._id] }">
-            {{ task.description }}
-            <button 
-              v-if="isTextTruncated(task.description)" 
-              class="expand-btn"
-              @click.stop="toggleExpand(task._id)"
-            >
-              {{ expandedTasks[task._id] ? 'Show less' : 'Show more' }}
-            </button>
-          </div>
-          <div v-if="task.notes" class="task-notes" :class="{ 'is-expanded': expandedTasks[task._id + '_notes'] }">
-            {{ task.notes }}
-            <button 
-              v-if="isTextTruncated(task.notes)" 
-              class="expand-btn"
-              @click.stop="toggleExpand(task._id + '_notes')"
-            >
-              {{ expandedTasks[task._id + '_notes'] ? 'Show less' : 'Show more' }}
-            </button>
-          </div>
-          <p v-else class="task-notes text-muted">No notes</p>
-        </div>
+        <task-card
+          :task="task"
+          @status-change="handleStatusChange"
+          @edit="editTask"
+          @delete="confirmDeleteTask"
+        />
       </template>
     </data-table>
 
@@ -140,6 +94,7 @@ import DeleteModal from '@/components/modals/DeleteConfirmationDialog.vue'
 import TaskModal from '@/components/tasks/modals/TaskModal.vue'
 import StatusFilter from '@/components/StatusFilter.vue'
 import DataTable from '@/components/DataTable.vue'
+import TaskCard from '@/components/tasks/TaskCard.vue'
 
 export default {
   name: 'TaskList',
@@ -147,7 +102,8 @@ export default {
     DeleteModal,
     TaskModal,
     StatusFilter,
-    DataTable
+    DataTable,
+    TaskCard
   },
   props: {
     projectId: {
@@ -609,144 +565,6 @@ export default {
         transition: transform 0.2s ease;
         transform-origin: center;
         will-change: transform;
-      }
-    }
-  }
-
-  .task-card-header {
-    padding: 12px 16px;
-    background-color: #f9fafb;
-    border-bottom: 1px solid #e5e7eb;
-  }
-
-  .task-status {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  .overdue-badge {
-    background-color: #ef4444;
-    color: white;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 0.875rem;
-    font-weight: 500;
-  }
-
-  .status-select-wrapper {
-    padding: 4px 12px;
-    border-radius: 16px;
-    min-width: 120px;
-    position: relative;
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-
-    &:hover {
-      filter: brightness(1.1);
-
-      .select-icon {
-        transform: translateY(1px);
-      }
-    }
-
-    &:active {
-      filter: brightness(0.95);
-    }
-
-    .select-icon {
-      position: absolute;
-      right: 8px;
-      color: rgba(255, 255, 255, 0.8);
-      font-size: 12px;
-      pointer-events: none;
-      transition: transform 0.2s ease;
-    }
-  }
-
-  .status-select {
-    background: transparent;
-    border: none;
-    color: #fff;
-    font-weight: 600;
-    font-size: 0.875rem;
-    outline: none;
-    appearance: none;
-    cursor: pointer;
-    width: 100%;
-    padding-right: 24px;
-    z-index: 1;
-    
-    option {
-      background: white;
-      color: #374151;
-      font-weight: 500;
-    }
-  }
-
-  .task-due-date {
-    font-size: 0.875rem;
-    color: #6b7280;
-
-    &.text-danger {
-      color: #ef4444;
-      font-weight: 500;
-    }
-  }
-
-  .task-card-content {
-    padding: 16px;
-    flex: 1;
-
-    .task-description, .task-notes {
-      position: relative;
-      margin: 0;
-      word-break: break-word;
-      overflow: hidden;
-      
-      &:not(.is-expanded) {
-        display: -webkit-box;
-        -webkit-line-clamp: 3;
-        -webkit-box-orient: vertical;
-        max-height: 4.5em;
-      }
-    }
-
-    .task-description {
-      font-size: 0.9375rem;
-      color: #111827;
-      line-height: 1.5;
-      margin-bottom: 8px;
-    }
-
-    .task-notes {
-      font-size: 0.875rem;
-      color: #6b7280;
-      line-height: 1.5;
-
-      &.text-muted {
-        color: #9ca3af;
-        font-style: italic;
-      }
-    }
-
-    .expand-btn {
-      background: none;
-      border: none;
-      color: #2563eb;
-      font-size: 0.875rem;
-      padding: 4px 8px;
-      cursor: pointer;
-      margin-left: 4px;
-      border-radius: 4px;
-      font-weight: 500;
-      transition: all 0.2s ease;
-
-      &:hover {
-        background: #eff6ff;
       }
     }
   }

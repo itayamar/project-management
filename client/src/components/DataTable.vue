@@ -37,18 +37,6 @@
               <p>{{ item.description }}</p>
             </div>
           </slot>
-
-          <!-- Card Actions -->
-          <div class="card-actions">
-            <slot name="actions" :item="item">
-              <button class="action-btn edit-btn" @click.stop="$emit('edit', item)" title="Edit">
-                ✏️
-              </button>
-              <button class="action-btn delete-btn" @click.stop="$emit('delete', item)" title="Delete">
-                🗑️
-              </button>
-            </slot>
-          </div>
         </div>
       </div>
 
@@ -68,7 +56,7 @@ import Pagination from './Pagination.vue'
 import SkelatonLoader from './SkelatonLoader.vue'
 
 export default {
-  name: 'DataTable',
+  name: '',
   components: {
     Pagination,
     SkelatonLoader
@@ -189,15 +177,6 @@ export default {
     margin: 0;
     word-break: break-word;
   }
-}
-
-.card-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  padding: 12px 20px;
-  background-color: #f9fafb;
-  border-top: 1px solid #e5e7eb;
 }
 
 .empty-state {
