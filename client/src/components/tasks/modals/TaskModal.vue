@@ -1,65 +1,75 @@
 <template>
   <div v-if="isOpen" class="dialog-overlay">
     <div class="dialog">
-      <h2>{{ task ? 'Edit Task' : 'Add Task' }}</h2>
+      <div class="dialog-header">
+        <h2>
+          <span class="dialog-icon primary">{{ task ? '✏️' : '➕' }}</span>
+          {{ task ? 'Edit Task' : 'Add New Task' }}
+        </h2>
+      </div>
 
-      <form @submit.prevent="saveTask">
-        <div class="form-group">
-          <label for="description">Description</label>
-          <input
-              type='text'
-              id="description"
-              v-model="localTask.description"
-              required
-          />
-        </div>
+      <div class="dialog-content">
+        <form @submit.prevent="saveTask">
+          <div class="form-group">
+            <label for="description">Task Description</label>
+            <input
+                type='text'
+                id="description"
+                v-model="localTask.description"
+                placeholder="Enter a clear description of the task..."
+                required
+            />
+          </div>
 
-<div class="form-group">
-          <label for="dueDate">Due Date</label>
-          <input
-              type="date"
-              id="dueDate"
-              v-model="localTask.dueDate"
-              required
-          />
-        </div>
+          <div class="form-group">
+            <label for="dueDate">Due Date</label>
+            <input
+                type="date"
+                id="dueDate"
+                v-model="localTask.dueDate"
+                required
+            />
+          </div>
 
-        <div class="form-group">
-          <label for="state">State</label>
-          <select id="state" v-model="localTask.state" required>
-            <option value="CREATED">Created</option>
-            <option value="IN_PROGRESS">In Progress</option>
-            <option value="COMPLETED">Completed</option>
-            <option value="ARCHIVED">Archived</option>
-          </select>
-        </div>
+          <div class="form-group">
+            <label for="state">Current Status</label>
+            <select id="state" v-model="localTask.state" required>
+              <option value="CREATED">📋 Created</option>
+              <option value="IN_PROGRESS">⏳ In Progress</option>
+              <option value="COMPLETED">✅ Completed</option>
+              <option value="ARCHIVED">📦 Archived</option>
+            </select>
+          </div>
 
-        <div class="form-group">
-          <label for="notes">Notes</label>
-          <textarea
-              id="notes"
-              v-model="localTask.notes"
-              rows="4"
-              autocomplete="off"
-          ></textarea>
-        </div>
+          <div class="form-group">
+            <label for="notes">Additional Notes</label>
+            <textarea
+                id="notes"
+                v-model="localTask.notes"
+                rows="4"
+                placeholder="Add any additional notes or details..."
+                autocomplete="off"
+            ></textarea>
+          </div>
 
-        <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
+          <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
+        </form>
+      </div>
 
-        <div class="buttons">
-          <button 
-            type="submit" 
+      <div class="buttons">
+        <button type="button" class="btn btn-secondary" @click="close">
+          Cancel
+        </button>
+        <button
+            type="submit"
             class="btn btn-primary"
             :disabled="!hasChanges"
             :class="{ 'btn-disabled': !hasChanges }"
-          >
-            {{ task ? 'Save Changes' : 'Add Task' }}
-          </button>
-          <button type="button" class="btn btn-secondary" @click="close">
-            Cancel
-          </button>
-        </div>
-      </form>
+            @click="saveTask"
+        >
+          {{ task ? 'Save Changes' : 'Create Task' }}
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -84,6 +94,7 @@ export default {
   data() {
     return {
       localTask: {
+        description: '',
         dueDate: '',
         state: 'CREATED',
         notes: ''
@@ -94,15 +105,17 @@ export default {
   },
   computed: {
     hasChanges() {
-      // For new tasks, always enable the button
-      if (!this.task) return true;
-      
+      // For new tasks, check if required fields are filled
+      if (!this.task) {
+        return this.localTask.description.trim() && this.localTask.dueDate;
+      }
+
       // For existing tasks, compare with original values
       return this.originalTask && (
-        this.localTask.description !== this.originalTask.description ||
-        this.localTask.dueDate !== this.originalTask.dueDate ||
-        this.localTask.state !== this.originalTask.state ||
-        this.localTask.notes !== this.originalTask.notes
+          this.localTask.description !== this.originalTask.description ||
+          this.localTask.dueDate !== this.originalTask.dueDate ||
+          this.localTask.state !== this.originalTask.state ||
+          this.localTask.notes !== this.originalTask.notes
       );
     }
   },
@@ -112,7 +125,7 @@ export default {
       handler(newTask) {
         if (newTask) {
           const formattedTask = {
-            ...newTask,
+            description: newTask.description || '',
             dueDate: newTask.dueDate?.split('T')[0] || '',
             state: newTask.state || 'CREATED',
             notes: newTask.notes || ''
@@ -122,6 +135,7 @@ export default {
         } else {
           const today = new Date().toISOString().split('T')[0];
           const newTaskData = {
+            description: '',
             dueDate: today,
             state: 'CREATED',
             notes: ''
@@ -140,56 +154,41 @@ export default {
   },
   methods: {
     saveTask() {
-      if (!this.localTask.dueDate || !this.localTask.state) {
-        this.errorMessage = 'Due date and state are required.'
-        return
+      // Validation
+      if (!this.localTask.description.trim()) {
+        this.errorMessage = 'Task description is required.';
+        return;
       }
+
+      if (!this.localTask.dueDate) {
+        this.errorMessage = 'Due date is required.';
+        return;
+      }
+
+      // Check if due date is in the past (only for new tasks or when changing due date)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const dueDate = new Date(this.localTask.dueDate);
+      dueDate.setHours(0, 0, 0, 0);
+
+      if (dueDate < today && (!this.task || this.localTask.dueDate !== this.originalTask?.dueDate)) {
+        this.errorMessage = 'Due date cannot be in the past.';
+        return;
+      }
+
       const payload = {
         ...this.localTask,
+        description: this.localTask.description.trim(),
         projectId: this.projectId
-      }
-      this.$emit('submit', payload)
-      this.close()
+      };
+
+      this.errorMessage = '';
+      this.$emit('submit', payload);
+      this.close();
     },
     close() {
-      this.$emit('cancel')
+      this.$emit('cancel');
     }
   }
 }
 </script>
-
-<style scoped>
-.form-group {
-  margin-bottom: 16px;
-}
-
-label {
-  display: block;
-  font-weight: bold;
-  margin-bottom: 6px;
-}
-
-input[type='text'],
-input[type='date'],
-select,
-textarea {
-  width: 100%;
-  padding: 8px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 14px;
-  box-sizing: border-box;
-  resize: vertical;
-}
-
-.btn-disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.error-message {
-  color: #dc2626;
-  margin-bottom: 16px;
-  font-size: 14px;
-}
-</style>

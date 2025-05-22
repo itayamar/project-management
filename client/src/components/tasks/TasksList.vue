@@ -51,11 +51,14 @@
       :current-page="currentPage"
       :total-pages="totalTasksPages"
       :empty-icon="'✓'"
+      :limit="this.limit"
       :empty-title="currentFilter === 'ALL' ? 'No tasks yet' : `No ${statusFilters[currentFilter].toLowerCase()} tasks`"
       :empty-description="currentFilter === 'ALL' ? 'Get started by creating your first task for this project' : 'Try selecting a different filter or create a new task'"
       :add-button-text="'Add Task'"
       :highlight-condition="isPastDue"
       @add="openCreateTaskModal"
+      @page-change="handlePageChange"
+      @limit-change="handleLimitChange"
     >
       <template #card-content="{ item: task }">
         <task-card
@@ -234,6 +237,11 @@ export default {
 
     handlePageChange(newPage) {
       this.currentPage = newPage
+      this.loadTasks()
+    },
+
+    handleLimitChange(newLimit) {
+      this.limit = newLimit
       this.loadTasks()
     },
 

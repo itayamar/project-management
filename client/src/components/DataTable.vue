@@ -39,13 +39,14 @@
           </slot>
         </div>
       </div>
-
       <!-- Pagination -->
       <pagination
         v-if="showPagination && items.length"
         :currentPage="currentPage"
         :totalPages="totalPages"
+        :limit="limit"
         @page-change="$emit('page-change', $event)"
+        @limit-change="$emit('limit-change', $event)"
       />
     </div>
   </div>
@@ -105,6 +106,10 @@ export default {
     highlightCondition: {
       type: Function,
       default: () => false
+    },
+    limit: {
+      type: Number,
+      default: 10
     }
   },
   methods: {

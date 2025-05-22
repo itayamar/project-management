@@ -23,12 +23,15 @@
       :loading="isLoading('projects')"
       :current-page="currentPage"
       :total-pages="totalPages"
+      :limit="limit"
       :empty-icon="'📋'"
       :empty-title="hasActiveFilters ? 'No Projects Found' : 'No Projects Yet'"
       :empty-description="hasActiveFilters ? 'No projects match your current filters. Try adjusting your search or filter criteria.' : 'Get started by creating your first project to organize your tasks!'"
       :add-button-text="'Create Project'"
       @click="openProject"
       @add="openAddModal"
+      @page-change="handlePageChange"
+      @limit-change="handleLimitChange"
     >
       <template #card-content="{ item: project }">
         <project-card
@@ -89,7 +92,8 @@ export default {
         '': 'All Projects',
         'in_progress': 'In Progress',
         'completed': 'Completed'
-      }
+      },
+      limit: 20,
     }
   },
   computed: {
@@ -206,10 +210,6 @@ export default {
       }
     },
 
-    fetchProjectsPage(page) {
-      this.updateFilters({ page });
-    },
-
     handleSearch(value) {
       if (this.searchTimeout) {
         clearTimeout(this.searchTimeout);
@@ -221,6 +221,11 @@ export default {
 
     handlePageChange(newPage) {
       this.fetchProjectsPage(newPage);
+    },
+
+    handleLimitChange(limit) {
+      this.limit = limit;
+      this.updateFilters({ limit });
     }
   }
 }
