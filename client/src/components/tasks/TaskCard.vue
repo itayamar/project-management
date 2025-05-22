@@ -52,8 +52,8 @@
     </div>
 
     <div class="actions">
-      <button class="icon-btn edit-btn" @click.stop="$emit('edit')" title="Edit Task">✏️</button>
-      <button class="icon-btn delete-btn" @click.stop="$emit('delete')" title="Delete Task">🗑️</button>
+      <button class="icon-btn edit-btn" @click.stop="$emit('edit', task)" title="Edit Task">✏️</button>
+      <button class="icon-btn delete-btn" @click.stop="$emit('delete', task)" title="Delete Task">🗑️</button>
     </div>
   </div>
 </template>
