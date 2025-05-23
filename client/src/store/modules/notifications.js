@@ -36,7 +36,8 @@ export default {
     actions: {
         showNotification({ commit }, { type, message, notificationType = 'info', autoClose = false }) {
             const notification = {
-                type: notificationType,
+                type,
+                notificationType,
                 message,
                 timestamp: new Date().toISOString(),
                 autoClose

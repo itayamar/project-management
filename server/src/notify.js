@@ -1,6 +1,7 @@
 import { server } from "./server.js";
 import { changeTypes, modelEvents } from "./constants.js";
 import { WS_EVENTS } from "./websocket.js";
+import { broadcastMessage } from "./websocket.js";
 
 // Map model events to WebSocket events
 const eventTypeMap = {
@@ -16,35 +17,29 @@ const eventTypeMap = {
   }
 };
 
-// add mongo schema middleware
-// and broadcast notifications on change
 export const registerNotificationEvents = (modelName, schema) => {
   schema
-    .post(modelEvents.SAVE, (data) => {
-      const wsEvent = eventTypeMap[modelName]?.[changeTypes.INSERT];
-      if (wsEvent) {
-        server.broadcast({
-          type: wsEvent,
-          payload: data
-        });
-      }
-    })
-    .post(modelEvents.UPDATE, (data) => {
-      const wsEvent = eventTypeMap[modelName]?.[changeTypes.UPDATE];
-      if (wsEvent) {
-        server.broadcast({
-          type: wsEvent,
-          payload: data
-        });
-      }
-    })
-    .post(modelEvents.DELETE, (data) => {
-      const wsEvent = eventTypeMap[modelName]?.[changeTypes.DELETE];
-      if (wsEvent) {
-        server.broadcast({
-          type: wsEvent,
-          payload: data
-        });
-      }
-    });
+      .post(modelEvents.SAVE, (data) => {
+        const wsEvent = eventTypeMap[modelName]?.[changeTypes.INSERT];
+        if (wsEvent) {
+          broadcastMessage(wsEvent, data);
+        }
+      })
+      .post(modelEvents.UPDATE, (data) => {
+        const wsEvent = eventTypeMap[modelName]?.[changeTypes.UPDATE];
+        if (wsEvent) {
+          broadcastMessage(wsEvent, data);
+        }
+      })
+      .post(modelEvents.DELETE, (data) => {
+        const wsEvent = eventTypeMap[modelName]?.[changeTypes.DELETE];
+        if (wsEvent && data && data._id) {
+          broadcastMessage(wsEvent, {
+            _id: data._id.toString(),
+            name: data.name
+          });
+        } else {
+          console.warn(`[WS] Cannot broadcast DELETE for ${modelName}, missing _id`);
+        }
+      });
 };

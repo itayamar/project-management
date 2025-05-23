@@ -18,8 +18,9 @@
     </div>
 
     <div v-else-if="project" class="content">
-      <ProjectHeader
+      <project-header
           :project="project"
+          :isBlocked="isBlocked"
           @edit="editProject"
           @delete="confirmDeleteProject"
       />
@@ -28,6 +29,7 @@
 
       <project-modal
           :isOpen="showEditModal"
+          :isBlocked="isBlocked"
           :project="project"
           @close="closeEditModal"
           @save="saveProject"
@@ -45,7 +47,7 @@
 </template>
 
 <script>
-import { mapGetters, mapActions } from 'vuex'
+import { mapGetters, mapActions, mapState } from 'vuex'
 import TaskList from '@/components/tasks/TasksList.vue'
 import ProjectModal from '@/components/projects/modals/ProjectModal.vue'
 import DeleteModal from '@/components/modals/DeleteConfirmationDialog.vue'
@@ -71,11 +73,25 @@ export default {
     return {
       showEditModal: false,
       showDeleteModal: false,
+      isEditing: false,
+    }
+  },
+  watch: {
+    editingProjectIds: {
+      handler(val) {
+        console.log('Editing list changed:', val);
+      },
+      deep: true,
+      immediate: true
     }
   },
   computed: {
+    ...mapState('project', ['editingProjectIds']),
     project() {
       return this.$store.getters['project/currentProject']
+    },
+    isBlocked() {
+      return this.project && this.editingProjectIds.includes(this.project._id);
     },
     ...mapGetters([
       'isLoading',
@@ -110,6 +126,7 @@ export default {
     },
 
     editProject() {
+      this.isEditing = true
       this.showEditModal = true
     },
 
@@ -139,6 +156,7 @@ export default {
     },
 
     closeEditModal() {
+      this.isEditing = false
       this.showEditModal = false
     },
 

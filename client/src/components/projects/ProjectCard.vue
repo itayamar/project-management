@@ -6,24 +6,41 @@
         <span v-if="project.completed" class="badge badge-completed">✔ Completed</span>
         <span v-else-if="project.inProgress" class="badge badge-inprogress">⏳ In Progress</span>
         <span v-else class="badge badge-pending">📋 Pending</span>
+        <span v-if="isBlocked" class="badge badge-lock">🔒 Editing</span>
       </h3>
     </div>
     <div class="card-body">
       <p>{{ project.description || 'No description provided' }}</p>
     </div>
     <div class="actions">
-      <button class="icon-btn edit-btn" @click.stop="$emit('edit')" title="Edit Project">✏️</button>
+      <button
+          class="icon-btn edit-btn"
+          :disabled="isBlocked"
+          :title="isBlocked ? 'Locked for editing' : 'Edit'"
+          @click.stop="$emit('edit')"
+      >
+        <span v-if="isBlocked">🔒</span>
+        <span v-else>✏️</span>
+      </button>
       <button class="icon-btn delete-btn" @click.stop="$emit('delete')" title="Delete Project">🗑️</button>
     </div>
   </div>
 </template>
 
 <script>
+import {mapState} from 'vuex'
+
 export default {
   props: {
     project: {
       type: Object,
       required: true
+    }
+  },
+  computed: {
+    ...mapState('project', ['editingProjectIds']),
+    isBlocked() {
+      return this.project && this.editingProjectIds.includes(this.project._id)
     }
   }
 }
@@ -100,6 +117,14 @@ export default {
     background: #f3f4f6;
     color: #4b5563;
   }
+}
+.badge-lock {
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 13px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  margin-left: 6px;
 }
 
 .actions {

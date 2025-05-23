@@ -141,8 +141,6 @@ export default {
   height: 100%;
   display: flex;
   flex-direction: column;
-  cursor: pointer;
-
   &:hover {
     border-color: #d1d5db;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);

@@ -63,7 +63,7 @@
         <button
             type="submit"
             class="btn btn-primary"
-            :disabled="!hasChanges"
+            :disabled="isBlocked || !hasChanges"
             :class="{ 'btn-disabled': !hasChanges }"
             @click="saveTask"
         >
@@ -75,8 +75,9 @@
 </template>
 
 <script>
+import {mapState} from 'vuex'
+
 export default {
-  name: 'TaskModal',
   props: {
     task: {
       type: Object,
@@ -89,7 +90,7 @@ export default {
     isOpen: {
       type: Boolean,
       default: false
-    }
+    },
   },
   data() {
     return {
@@ -104,6 +105,10 @@ export default {
     }
   },
   computed: {
+    ...mapState('task', ['editingTaskIds']),
+    isBlocked() {
+      return this.task && this.editingTaskIds.includes(this.task._id);
+    },
     hasChanges() {
       // For new tasks, check if required fields are filled
       if (!this.task) {
@@ -147,8 +152,12 @@ export default {
       }
     },
     isOpen(open) {
-      if (!open) {
-        this.errorMessage = '';
+      if (this.task?._id) {
+        if (open) {
+          this.$store.dispatch('task/startEditingTask', this.task._id);
+        } else {
+          this.errorMessage = '';
+        }
       }
     }
   },
@@ -187,6 +196,9 @@ export default {
       this.close();
     },
     close() {
+      if (this.task?._id) {
+        this.$store.dispatch('task/stopEditingTask', this.task._id);
+      }
       this.$emit('cancel');
     }
   }

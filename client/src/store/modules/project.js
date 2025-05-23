@@ -10,6 +10,7 @@ export default {
     projects: [],
     currentViewedProjectId: null, // Single source of truth for current project
     totalProjects: 0,
+    editingProjectIds: [],
     projectCounts: {
       in_progress: 0,
       completed: 0,
@@ -70,6 +71,16 @@ export default {
     },
     SET_CURRENT_VIEWED_PROJECT(state, projectId) {
       state.currentViewedProjectId = projectId;
+    },
+    ADD_EDITING_PROJECT(state, projectId) {
+      if (!state.editingProjectIds.includes(projectId)) {
+        state.editingProjectIds.push(projectId);
+      }
+    },
+    REMOVE_EDITING_PROJECT(state, projectId) {
+      console.log('removing project', projectId);
+      state.editingProjectIds = state.editingProjectIds.filter(id => id !== projectId);
+      console.log(state.editingProjectIds);
     }
   },
   actions: {
@@ -264,26 +275,34 @@ export default {
 
       // Listen for project deletions
       wsService.subscribe(WS_EVENTS.PROJECT_DELETED, (data) => {
-        const projectId = data;
-        const deletedProject = state.projects.find(p => p._id === projectId);
-        
+        const projectId = data._id;
+        const deletedProject = data
+
         if (deletedProject) {
-          const projectName = deletedProject.name;
+          const projectName = data.name;
           commit('REMOVE_PROJECT', projectId);
-          
-          if (state.currentViewedProjectId === projectId) {
+
+          const isViewingDeletedProject = state.currentViewedProjectId === projectId;
+
+          if (isViewingDeletedProject) {
             commit('SET_CURRENT_VIEWED_PROJECT', null);
-            if (router.currentRoute.path.includes(`/projects/${projectId}`)) {
-              router.push('/projects');
-            }
+
+            // Redirect and notify
+            router.push('/projects');
+
+            dispatch('notifications/showNotification', {
+              type: 'project',
+              message: `The project "${projectName}" was deleted by another user.`,
+              notificationType: 'info',
+              autoClose: false
+            }, { root: true });
           }
 
           const lastActionId = rootState.notifications.lastActionId;
-          if (lastActionId !== projectId && 
-              (!state.currentViewedProjectId || state.currentViewedProjectId === projectId)) {
+          if (lastActionId !== projectId && !isViewingDeletedProject) {
             dispatch('notifications/showNotification', {
               type: 'project',
-              message: `Project "${projectName}" has been deleted by another user`,
+              message: `Project "${projectName}" has been deleted by another user.`,
               notificationType: 'info',
               autoClose: false
             }, { root: true });
@@ -292,6 +311,31 @@ export default {
           dispatch('fetchProjects');
         }
       });
+
+      wsService.subscribe(WS_EVENTS.START_EDITING_PROJECT, ({ id }) => {
+        commit('ADD_EDITING_PROJECT', id);
+        dispatch('notifications/showNotification', {
+          type: 'project',
+          message: 'This project is being edited by someone else.',
+          notificationType: 'warning',
+          autoClose: false
+        }, { root: true });
+        console.log('START_EDITING_PROJECT', id)
+      });
+
+      wsService.subscribe(WS_EVENTS.STOP_EDITING_PROJECT, ({ id }) => {
+        if (!id) {
+          console.warn('stopEditingProject called with missing ID');
+          return;
+        }
+        commit('REMOVE_EDITING_PROJECT', id);
+      });
+    },
+    startEditingProject(_, id) {
+      wsService.send(WS_EVENTS.START_EDITING_PROJECT, { id });
+    },
+    stopEditingProject(_, id) {
+      wsService.send(WS_EVENTS.STOP_EDITING_PROJECT, { id });
     }
   },
   getters: {

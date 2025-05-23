@@ -15,6 +15,7 @@ export default {
         currentTask: null,
         currentProjectId: null,
         totalTasks: 0,
+        editingTaskIds: [],
         taskCounts: {
             CREATED: 0,
             IN_PROGRESS: 0,
@@ -74,8 +75,13 @@ export default {
                 state.lastActionId = null;
             }, 2000);
         },
-        SET_CURRENT_PROJECT_ID(state, projectId) {
-            state.currentProjectId = projectId;
+        ADD_EDITING_TASK(state, id) {
+            if (!state.editingTaskIds.includes(id)) {
+                state.editingTaskIds.push(id);
+            }
+        },
+        REMOVE_EDITING_TASK(state, id) {
+            state.editingTaskIds = state.editingTaskIds.filter(tid => tid !== id);
         }
     },
     actions: {
@@ -314,7 +320,7 @@ export default {
             }
         },
         // Initialize WebSocket listeners
-        initializeWebSocket({ dispatch }) {
+        initializeWebSocket({ commit, dispatch }) {
             wsService.connect();
 
             // Listen for task events
@@ -329,6 +335,24 @@ export default {
             wsService.subscribe(WS_EVENTS.TASK_DELETED, (data) => {
                 dispatch('handleTaskDeleted', data);
             });
+
+            wsService.subscribe(WS_EVENTS.START_EDITING_TASK, ({ id }) => {
+                commit('ADD_EDITING_TASK', id);
+            });
+
+            wsService.subscribe(WS_EVENTS.STOP_EDITING_TASK, ({ id }) => {
+                commit('REMOVE_EDITING_TASK', id);
+            });
+        },
+        startEditingTask(_, id) {
+            if (!id) {
+                console.warn('startEditingTask called with missing ID');
+                return;
+            }
+            wsService.send(WS_EVENTS.START_EDITING_TASK, { id });
+        },
+        stopEditingTask(_, id) {
+            wsService.send(WS_EVENTS.STOP_EDITING_TASK, { id });
         }
     },
     getters: {

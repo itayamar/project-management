@@ -18,7 +18,13 @@ export const WS_EVENTS = {
   
   // System events
   CONNECTED: 'CONNECTED',
-  ERROR: 'ERROR'
+  ERROR: 'ERROR',
+
+  // Edit task/project
+  START_EDITING_PROJECT: 'START_EDITING_PROJECT',
+  STOP_EDITING_PROJECT: 'STOP_EDITING_PROJECT',
+  START_EDITING_TASK: 'START_EDITING_TASK',
+  STOP_EDITING_TASK: 'STOP_EDITING_TASK',
 };
 
 // Initialize WebSocket server
@@ -135,10 +141,11 @@ export function broadcastMessage(type, payload, excludeClient = null) {
   
   let sentCount = 0;
   const totalClients = clients.size;
-  const activeClients = Array.from(clients).filter(client => client.readyState === WebSocket.OPEN).length;
-  
+  const OPEN_STATE = 1; // WebSocket readyState = 1 means OPEN
+  const activeClients = Array.from(clients).filter(client => client.readyState === OPEN_STATE).length;
+
   clients.forEach(client => {
-    if (client.readyState === WebSocket.OPEN && client !== excludeClient) {
+    if (client.readyState === OPEN_STATE && client !== excludeClient) {
       client.send(message);
       sentCount++;
     }

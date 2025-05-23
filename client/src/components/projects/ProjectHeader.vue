@@ -3,10 +3,21 @@
     <div class="header-content">
       <div class="title-section">
         <div class="actions">
-          <button class="icon-btn edit-btn" @click="$emit('edit')" title="Edit Project">✏️</button>
+          <button
+              class="icon-btn edit-btn"
+              :disabled="isBlocked"
+              :title="isBlocked ? 'Locked for editing' : 'Edit Project'"
+              @click="$emit('edit')"
+          >
+            <span v-if="isBlocked">🔒</span>
+            <span v-else>✏️</span>
+          </button>
           <button class="icon-btn delete-btn" @click="$emit('delete')" title="Delete Project">🗑️</button>
         </div>
-        <h1 class="title">{{ project.name }}</h1>
+        <h1 class="title">
+          {{ project.name }}
+          <span v-if="isBlocked" class="badge-lock">Editing...</span>
+        </h1>
       </div>
       <p class="description">{{ project.description || 'No description provided' }}</p>
     </div>
@@ -21,6 +32,10 @@ export default {
       type: Object,
       required: true
     },
+    isBlocked: {
+      type: Boolean,
+      default: false
+    }
   }
 }
 </script>
@@ -76,6 +91,15 @@ export default {
     color: #9ca3af;
     font-style: italic;
   }
+}
+
+.badge-lock {
+  font-size: 14px;
+  background: #fee2e2;
+  color: #b91c1c;
+  padding: 4px 10px;
+  border-radius: 6px;
+  margin-left: 10px;
 }
 
 @media (max-width: 640px) {

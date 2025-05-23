@@ -24,6 +24,7 @@
         <span class="task-due-date" :class="{'text-danger': isPastDue}">
           Due {{ formattedDueDate }}
         </span>
+        <span v-if="isBlocked" class="badge-lock">🔒 Editing</span>
       </div>
     </div>
 
@@ -52,13 +53,21 @@
     </div>
 
     <div class="actions">
-      <button class="icon-btn edit-btn" @click.stop="$emit('edit', task)" title="Edit Task">✏️</button>
+      <button class="icon-btn edit-btn"
+              @click.stop="$emit('edit', task)"
+              :disabled="isBlocked"
+              :title="isBlocked ? 'Locked for editing' : 'Edit'"
+      >
+        ✏️
+      </button>
       <button class="icon-btn delete-btn" @click.stop="$emit('delete', task)" title="Delete Task">🗑️</button>
     </div>
   </div>
 </template>
 
 <script>
+import {mapState} from 'vuex'
+
 export default {
   props: {
     task: {
@@ -74,6 +83,10 @@ export default {
     }
   },
   computed: {
+    ...mapState('task', ['editingTaskIds']),
+    isBlocked() {
+      return this.task && this.editingTaskIds.includes(this.task._id);
+    },
     isPastDue() {
       if (this.task.state === 'COMPLETED' || this.task.state === 'ARCHIVED') {
         return false
