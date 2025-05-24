@@ -1,6 +1,7 @@
 const PROJECTS_BASE_URL = '/api/projects/';
 
-async function fetchProjects({ page = 1, limit = 20, search = '', status = '' } = {}) {
+async function fetchProjects({ page = 1, limit = 20, search = '', status = '',
+                               sortField = '', sortOrder = '' } = {}) {
     const params = new URLSearchParams();
     
     // Add pagination parameters
@@ -15,6 +16,13 @@ async function fetchProjects({ page = 1, limit = 20, search = '', status = '' } 
     // Add status parameter if not empty
     if (status?.trim()) {
         params.append('status', status.trim());
+    }
+
+    if (sortField?.trim()) {
+        params.append('sortField', sortField.trim());
+    }
+    if (sortOrder?.trim()) {
+        params.append('sortOrder', sortOrder.trim());
     }
 
     const url = `${PROJECTS_BASE_URL}?${params.toString()}`;

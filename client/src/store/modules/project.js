@@ -20,7 +20,9 @@ export default {
       search: '',
       status: '',
       page: 1,
-      limit: 20
+      limit: 20,
+      sortField: 'createdAt',
+      sortOrder: 'desc'
     },
     lastActionId: null, // Track our last action
     lastActionIdTimeout: null // Track the timeout for lastActionId
@@ -99,7 +101,9 @@ export default {
           page: state.filters.page,
           limit: state.filters.limit,
           search: state.filters.search,
-          status: state.filters.status
+          status: state.filters.status,
+          sortField: state.filters.sortField,
+          sortOrder: state.filters.sortOrder
         });
         
         commit('SET_PROJECTS', projectsData.projects);

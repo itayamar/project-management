@@ -2,10 +2,23 @@
   <div class="project-list container">
     <div class="header-section">
       <h1>Projects</h1>
-      <button class="btn-add" @click="openAddModal">
-        <span class="icon-btn">+</span>
-        <span class="text-btn">Create Project</span>
-      </button>
+      <div class="header-actions">
+        <SortControls
+            :fields="[
+                      { value: 'createdAt', label: '📅 Created Date' },
+                      { value: 'updatedAt', label: '🔄 Last Updated' },
+                      { value: 'name', label: '🔤 Name' }
+                     ]"
+            :sortField="sortField"
+            :sortOrder="sortOrder"
+            @update:sortField="sortField = $event"
+            @update:sortOrder="sortOrder = $event"
+        />
+        <button class="btn-add" @click="openAddModal">
+          <span class="icon-btn">+</span>
+          <span class="text-btn">Add Project</span>
+        </button>
+      </div>
     </div>
 
     <status-filter
@@ -44,7 +57,7 @@
     </data-table>
 
     <!-- Add/Edit Project Modal -->
-    <ProjectModal
+    <project-modal
       :isOpen="isModalOpen"
       :project="selectedProject"
       @save="handleSave"
@@ -52,7 +65,7 @@
     />
 
     <!-- Delete Confirmation Dialog -->
-    <DeleteDialog
+    <delete-dialog
       v-if="projectToDelete"
       :isOpen="isDeleteModalOpen"
       :item="projectToDelete"
@@ -70,6 +83,7 @@ import DeleteDialog from '@/components/modals/DeleteConfirmationDialog.vue'
 import StatusFilter from '@/components/StatusFilter.vue'
 import DataTable from '@/components/DataTable.vue'
 import ProjectCard from '@/components/projects/ProjectCard.vue'
+import SortControls from '@/components/SortControls.vue'
 
 export default {
   name: 'ProjectList',
@@ -78,7 +92,8 @@ export default {
     DeleteDialog,
     StatusFilter,
     DataTable,
-    ProjectCard
+    ProjectCard,
+    SortControls
   },
   data() {
     return {
@@ -121,6 +136,22 @@ export default {
       },
       set(value) {
         this.handleSearch(value);
+      }
+    },
+    sortField: {
+      get() {
+        return this.filters.sortField;
+      },
+      set(value) {
+        this.updateFilters({ sortField: value });
+      }
+    },
+    sortOrder: {
+      get() {
+        return this.filters.sortOrder;
+      },
+      set(value) {
+        this.updateFilters({ sortOrder: value });
       }
     },
     statusFilter: {
@@ -234,137 +265,15 @@ export default {
 <style lang="less" scoped>
 @import '../../styles/main.less';
 
-.project-list {
-  /* Container styles are applied via the container class */
-}
-
-.header-section {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-  gap: 16px;
-  flex-wrap: wrap;
-
-  h1 {
-    font-size: 32px;
-    font-weight: 700;
-    color: #111827;
-    margin: 0;
-  }
-}
-
 .project-items {
   display: grid;
   gap: 1rem;
   grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
 }
 
-.empty-state {
-  text-align: center;
-  padding: 48px 24px;
-  background: #f9fafb;
-  border-radius: 12px;
-  border: 2px dashed #e5e7eb;
-  margin: 24px 0;
-
-  .empty-state-content {
-    max-width: 400px;
-    margin: 0 auto;
-  }
-
-  .empty-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 64px;
-    height: 64px;
-    margin: 0 auto 20px;
-    background: #eff6ff;
-    border-radius: 50%;
-    font-size: 28px;
-    color: #2563eb;
-  }
-
-  h3 {
-    color: #111827;
-    font-size: 20px;
-    font-weight: 600;
-    margin: 0 0 12px;
-  }
-
-  p {
-    color: #6b7280;
-    font-size: 15px;
-    line-height: 1.5;
-    margin: 0 0 24px;
-  }
-
-  .btn-primary {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 24px;
-    background: #2563eb;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-
-    .btn-icon {
-      font-size: 18px;
-      line-height: 1;
-    }
-
-    &:hover {
-      background: #1d4ed8;
-      transform: translateY(-1px);
-    }
-
-    &:active {
-      transform: translateY(0);
-    }
-  }
-}
-
 @media (max-width: 768px) {
   .project-items {
     grid-template-columns: 1fr;
-  }
-}
-
-@media screen and (max-width: 640px) {
-  .empty-state {
-    margin: 16px -16px;
-    border-radius: 0;
-    border-left: none;
-    border-right: none;
-    padding: 40px 20px;
-
-    .empty-icon {
-      width: 56px;
-      height: 56px;
-      font-size: 24px;
-      margin-bottom: 16px;
-    }
-
-    h3 {
-      font-size: 18px;
-      margin-bottom: 8px;
-    }
-
-    p {
-      font-size: 14px;
-      margin-bottom: 20px;
-    }
-
-    .btn-primary {
-      width: 100%;
-      justify-content: center;
-    }
   }
 }
 </style>

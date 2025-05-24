@@ -38,6 +38,17 @@ router
                 });
             }
 
+            // Add sorting
+            const { sortField, sortOrder } = req.query;
+            const allowedSortFields = ['name', 'createdAt', 'updatedAt'];
+            if (sortField && allowedSortFields.includes(sortField)) {
+                pipeline.push({
+                    $sort: {
+                        [sortField]: sortOrder === 'desc' ? -1 : 1
+                    }
+                });
+            }
+
             pipeline.push({
                 $addFields: {
                     taskCount: { $size: "$tasks" },

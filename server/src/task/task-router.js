@@ -19,19 +19,21 @@ router
                 filter.projectId = new mongoose.Types.ObjectId(req.query.projectId);
             }
 
-            // Add search functionality
-            const search = req.query.search;
-            if (search && typeof search === 'string' && search.trim()) {
-                const searchRegex = new RegExp(search.trim(), 'i');
-                filter.$or = [
-                    { description: searchRegex },
-                    { notes: searchRegex }
-                ];
-            }
-
             const pipeline = [
                 { $match: filter }
             ];
+
+            const { sortField, sortOrder } = req.query;
+
+            // Add sorting
+            const allowedSortFields = ['dueDate', 'createdAt', 'updatedAt'];
+            if (sortField && allowedSortFields.includes(sortField)) {
+                pipeline.push({
+                    $sort: {
+                        [sortField]: sortOrder === 'desc' ? -1 : 1
+                    }
+                });
+            }
 
             // Get total count before pagination
             const countPipeline = [...pipeline];

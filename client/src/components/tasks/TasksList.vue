@@ -3,22 +3,17 @@
     <div class="header-section">
       <h3 class="section-title">Tasks</h3>
       <div class="header-actions">
-        <div class="sort-controls">
-          <div class="sort-label">Sort by:</div>
-          <select v-model="sortField" class="sort-select">
-            <option value="dueDate">⏰ Due Date</option>
-            <option value="createdAt">📅 Created Date</option>
-            <option value="updatedAt">🔄 Last Updated</option>
-          </select>
-          <button 
-            class="btn btn-sort" 
-            @click="toggleSort" 
-            :title="sortOrder === 'asc' ? 'Showing oldest first' : 'Showing newest first'">
-            <span class="sort-icon">
-              {{ sortOrder === 'asc' ? '↓' : '↑' }}
-            </span>
-          </button>
-        </div>
+        <SortControls
+            :fields="[
+                      { value: 'dueDate', label: '⏰ Due Date' },
+                      { value: 'createdAt', label: '📅 Created Date' },
+                      { value: 'updatedAt', label: '🔄 Last Updated' }
+                     ]"
+            :sortField="sortField"
+            :sortOrder="sortOrder"
+            @update:sortField="sortField = $event"
+            @update:sortOrder="sortOrder = $event"
+        />
         <button class="btn-add" @click="openCreateTaskModal">
           <span class="icon-btn">+</span>
           <span class="text-btn">Add Task</span>
@@ -46,7 +41,7 @@
     />
 
     <data-table
-      :items="filteredTasks"
+      :items="tasks"
       :loading="isLoading('tasks')"
       :current-page="currentPage"
       :total-pages="totalTasksPages"
@@ -98,6 +93,7 @@ import TaskModal from '@/components/tasks/modals/TaskModal.vue'
 import StatusFilter from '@/components/StatusFilter.vue'
 import DataTable from '@/components/DataTable.vue'
 import TaskCard from '@/components/tasks/TaskCard.vue'
+import SortControls from '@/components/SortControls.vue'
 
 export default {
   name: 'TaskList',
@@ -106,7 +102,8 @@ export default {
     TaskModal,
     StatusFilter,
     DataTable,
-    TaskCard
+    TaskCard,
+    SortControls
   },
   props: {
     projectId: {
@@ -120,8 +117,6 @@ export default {
       showDeleteModal: false,
       isEditing: false,
       currentFilter: 'ALL',
-      sortField: 'dueDate',
-      sortOrder: 'asc',
       taskToEdit: null,
       taskToDelete: null,
       taskForm: {
@@ -145,7 +140,7 @@ export default {
     }
   },
   mounted() {
-    this.checkStatusTabsScroll();
+    this.checkStatusTabsScroll()
     window.addEventListener('resize', this.checkStatusTabsScroll);
   },
   beforeDestroy() {
@@ -155,23 +150,33 @@ export default {
     ...mapState({
       tasks: state => state.task.tasks,
       totalTasks: state => state.task.totalTasks,
-      taskCounts: state => state.task.taskCounts
+      taskCounts: state => state.task.taskCounts,
+      filters: state => state.task.filters,
     }),
+    sortField: {
+      get() {
+        return this.filters.sortField;
+      },
+      set(value) {
+        this.updateFilters({
+          projectId: this.projectId,
+          filters: { sortField: value }
+        })
+      }
+    },
+    sortOrder: {
+      get() {
+        return this.filters.sortOrder;
+      },
+      set(value) {
+        this.updateFilters({
+          projectId: this.projectId,
+          filters: { sortOrder: value }
+        })
+      }
+    },
     totalTasksPages() {
       return Math.ceil(this.totalTasks / this.limit)
-    },
-    filteredTasks() {
-      let tasks = [...this.tasks];
-      
-      if (this.currentFilter === 'OVERDUE') {
-        return this.sortTasks(tasks.filter(task => this.isPastDue(task)));
-      }
-      
-      if (this.currentFilter === 'ALL') {
-        return this.sortTasks(tasks);
-      }
-      
-      return this.sortTasks(tasks.filter(task => task.state === this.currentFilter));
     },
     ...mapGetters([
       'isLoading',
@@ -224,7 +229,8 @@ export default {
       fetchProjectTasks: 'fetchTasks',
       createTask: 'createTask',
       updateTask: 'updateTask',
-      deleteTask: 'deleteTask'
+      deleteTask: 'deleteTask',
+      updateFilters: 'updateFilters'
     }),
 
     async loadTasks() {
@@ -247,46 +253,6 @@ export default {
 
     filterTasks(status) {
       this.currentFilter = status
-    },
-
-    sortTasks(tasks) {
-      // Sort by selected field first
-      const sortedTasks = [...tasks].sort((a, b) => {
-        let valueA, valueB;
-        
-        switch (this.sortField) {
-          case 'dueDate':
-            valueA = new Date(a.dueDate);
-            valueB = new Date(b.dueDate);
-            break;
-          case 'createdAt':
-            valueA = new Date(a.createdAt);
-            valueB = new Date(b.createdAt);
-            break;
-          case 'updatedAt':
-            valueA = new Date(a.updatedAt || a.createdAt);
-            valueB = new Date(b.updatedAt || b.createdAt);
-            break;
-          default:
-            valueA = new Date(a.dueDate);
-            valueB = new Date(b.dueDate);
-        }
-        
-        return this.sortOrder === 'asc' ? valueA - valueB : valueB - valueA;
-      });
-
-      // Then sort by state
-      const stateOrder = {
-        'CREATED': 0,
-        'IN_PROGRESS': 1,
-        'COMPLETED': 2,
-        'ARCHIVED': 3
-      };
-
-      return sortedTasks.sort((a, b) => {
-        if (a.state === b.state) return 0;
-        return stateOrder[a.state] - stateOrder[b.state];
-      });
     },
 
     formatDate(dateString) {
@@ -442,11 +408,11 @@ export default {
       if (this.searchTimeout) {
         clearTimeout(this.searchTimeout);
       }
-      
+
       const searchValue = typeof value === 'string' ? value : value?.target?.value || '';
-      
+
       this.searchTimeout = setTimeout(() => {
-        this.$store.dispatch('task/updateFilters', {
+        this.updateFilters({
           projectId: this.projectId,
           filters: { search: searchValue }
         });
@@ -476,132 +442,5 @@ export default {
 .task-list-container {
   position: relative;
   width: 100%;
-}
-
-.header-section {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-  gap: 16px;
-  flex-wrap: wrap;
-
-  .section-title {
-    font-size: 1.5rem;
-    font-weight: 600;
-    margin: 0;
-  }
-
-  .header-actions {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-  }
-
-  .sort-controls {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    background: white;
-    padding: 0 4px;
-    height: 40px;
-    transition: all 0.2s ease;
-
-    &:hover {
-      border-color: #d1d5db;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-    }
-
-    .sort-label {
-      padding-left: 8px;
-      font-size: 14px;
-      font-weight: 500;
-      color: #6b7280;
-      white-space: nowrap;
-    }
-
-    .sort-select {
-      padding: 0 8px;
-      font-size: 14px;
-      font-weight: 500;
-      color: #111827;
-      border: none;
-      outline: none;
-      cursor: pointer;
-      background: transparent;
-      appearance: none;
-      min-width: 140px;
-
-      option {
-        font-size: 14px;
-      }
-
-      &:hover {
-        color: #2563eb;
-      }
-    }
-
-    .btn-sort {
-      width: 32px;
-      height: 32px;
-      padding: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: none;
-      border-radius: 6px;
-      background: transparent;
-      color: #6b7280;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      font-size: 16px;
-
-      &:hover {
-        background: #f3f4f6;
-        color: #2563eb;
-      }
-
-      .sort-icon {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 16px;
-        height: 16px;
-        line-height: 1;
-        transition: transform 0.2s ease;
-        transform-origin: center;
-        will-change: transform;
-      }
-    }
-  }
-}
-
-@media (max-width: 480px) {
-  .header-section {
-    flex-direction: column;
-    align-items: stretch;
-
-    .header-actions {
-      flex-direction: column;
-      gap: 8px;
-      width: 100%;
-    }
-
-    .sort-controls {
-      width: 100%;
-      justify-content: space-between;
-
-      .sort-select {
-        flex: 1;
-      }
-    }
-
-    .btn-add {
-      width: 100%;
-      justify-content: center;
-    }
-  }
 }
 </style>

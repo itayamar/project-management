@@ -1,6 +1,7 @@
 const TASKS_BASE_URL = '/api/tasks/';
 
-async function fetchTasks(projectId, page = 1, limit = 20, search = '') {
+async function fetchTasks(projectId, page = 1, limit = 20, search = '', sortField = '',
+                          sortOrder = '') {
     const params = new URLSearchParams({
         projectId,
         page: page.toString(),
@@ -9,6 +10,12 @@ async function fetchTasks(projectId, page = 1, limit = 20, search = '') {
 
     if (search && typeof search === 'string' && search.trim()) {
         params.append('search', search.trim());
+    }
+    if (sortField?.trim()) {
+        params.append('sortField', sortField.trim());
+    }
+    if (sortOrder?.trim()) {
+        params.append('sortOrder', sortOrder.trim());
     }
 
     const url = `${TASKS_BASE_URL}?${params.toString()}`;

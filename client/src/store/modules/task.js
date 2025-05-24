@@ -25,7 +25,9 @@ export default {
         filters: {
             search: '',
             page: 1,
-            limit: 20
+            limit: 20,
+            sortField: 'createdAt',
+            sortOrder: 'desc'
         },
         lastActionId: null, // Track our last action
         lastActionIdTimeout: null // Track the timeout for lastActionId
@@ -85,7 +87,7 @@ export default {
         }
     },
     actions: {
-        async fetchTasks({ commit, state }, { projectId, page, limit, search } = {}) {
+        async fetchTasks({ commit, state }, { projectId, page, limit, search, sortField,  sortOrder} = {}) {
             try {
                 commit('SET_LOADING', { type: 'tasks', value: true }, { root: true });
                 commit('SET_ERROR', null, { root: true });
@@ -94,17 +96,22 @@ export default {
                     projectId,
                     page: page || state.filters.page,
                     limit: limit || state.filters.limit,
-                    search: search !== undefined ? search : state.filters.search
+                    search: search !== undefined ? search : state.filters.search,
+                    sortField: sortField || state.filters.sortField,
+                    sortOrder: sortOrder || state.filters.sortOrder
                 };
 
                 const data = await fetchTasks(
                     params.projectId,
                     params.page,
                     params.limit,
-                    params.search
+                    params.search,
+                    params.sortField,
+                    params.sortOrder
                 );
                 
                 commit('SET_TASKS', data.tasks);
+                commit('SET_TOTAL_TASKS', data.total);
                 commit('SET_TOTAL_TASKS', data.total);
                 commit('SET_TASK_COUNTS', data.counts);
             } catch (error) {
