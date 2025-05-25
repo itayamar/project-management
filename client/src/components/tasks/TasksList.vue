@@ -168,6 +168,9 @@ export default {
       }
     },
     totalTasksPages() {
+      if (!this.limit || !this.totalTasks || isNaN(this.totalTasks)) {
+        return 1
+      }
       return Math.ceil(this.totalTasks / this.limit)
     },
     currentFilter: {

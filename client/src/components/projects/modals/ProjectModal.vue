@@ -34,22 +34,21 @@
           </div>
 
           <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
+          <footer class="buttons">
+            <button type="button" class="btn btn-secondary" @click="close">
+              Cancel
+            </button>
+            <button
+                type="submit"
+                class="btn btn-primary"
+                :disabled="isBlocked || !localProject.name || (project && isUnchanged)"
+                :class="{ 'btn-disabled': !localProject.name || (project && isUnchanged) }"
+            >
+              {{ project ? 'Save Changes' : 'Create Project' }}
+            </button>
+          </footer>
         </form>
       </section>
-
-      <footer class="buttons">
-        <button type="button" class="btn btn-secondary" @click="close">
-          Cancel
-        </button>
-        <button
-            type="submit"
-            class="btn btn-primary"
-            :disabled="isBlocked || !localProject.name || (project && isUnchanged)"
-            :class="{ 'btn-disabled': !localProject.name || (project && isUnchanged) }"
-        >
-          {{ project ? 'Save Changes' : 'Create Project' }}
-        </button>
-      </footer>
     </div>
   </div>
 </template>

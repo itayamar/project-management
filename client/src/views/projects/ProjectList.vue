@@ -169,7 +169,13 @@ export default {
         this.handlePageChange(value);
       }
     },
+    totalProjects () {
+      return this.projectCounts.total
+    },
     totalPages() {
+      if (!this.limit || !this.totalProjects || isNaN(this.totalProjects)) {
+        return 1
+      }
       return Math.ceil(this.totalProjects / this.filters.limit)
     },
     hasActiveFilters() {
