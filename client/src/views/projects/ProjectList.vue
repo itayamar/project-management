@@ -38,8 +38,8 @@
       :total-pages="totalPages"
       :limit="limit"
       :empty-icon="'📋'"
-      :empty-title="hasActiveFilters ? 'No Projects Found' : 'No Projects Yet'"
-      :empty-description="hasActiveFilters ? 'No projects match your current filters. Try adjusting your search or filter criteria.' : 'Get started by creating your first project to organize your tasks!'"
+      :empty-title="emptyStateText.title"
+      :empty-description="emptyStateText.description"
       :add-button-text="'Create Project'"
       @click="openProject"
       @add="openProjectModal"
@@ -174,6 +174,20 @@ export default {
     },
     hasActiveFilters() {
       return this.filters.search || this.filters.status;
+    },
+    emptyStateText() {
+      const hasFilters = this.hasActiveFilters;
+      const statusLabel = this.statusFilters[this.filters.status] || '';
+      const statusText = statusLabel && this.filters.status ? `${statusLabel}` : '';
+
+      return {
+        title: hasFilters
+            ? `No ${statusText ? statusText + ' ' : ''}Projects Found`
+            : 'No Projects Yet',
+        description: hasFilters
+            ? `No projects match your current filters${statusText ? ` (${statusText})` : ''}. Try adjusting your search or filter criteria.`
+            : 'Get started by creating your first project to organize your tasks!'
+      };
     }
   },
   created() {

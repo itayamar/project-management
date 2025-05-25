@@ -201,7 +201,7 @@ export default {
     },
     emptyTitle() {
       const label = this.statusFilters[this.currentFilter];
-      return label ? `No ${label.toLowerCase()} tasks` : 'No tasks yet'
+      return this.currentFilter ? `No ${label.toLowerCase()} tasks` : 'No tasks yet'
     },
     emptyDescription() {
       const label = this.statusFilters[this.currentFilter];
