@@ -12,14 +12,22 @@
             <span v-if="isBlocked">🔒</span>
             <span v-else>✏️</span>
           </button>
-          <button class="icon-btn delete-btn" @click="$emit('delete')" title="Delete Project">🗑️</button>
+          <button
+              class="icon-btn delete-btn"
+              @click="$emit('delete')"
+              title="Delete Project"
+          >
+            🗑️
+          </button>
         </div>
         <h1 class="title">
           {{ project.name }}
-          <span v-if="isBlocked" class="badge-lock">Editing...</span>
+          <span v-if="isBlocked" class="badge badge-lock">Editing...</span>
         </h1>
       </div>
-      <p class="description">{{ project.description || 'No description provided' }}</p>
+      <p class="description">
+        {{ project.description || 'No description provided' }}
+      </p>
     </div>
   </div>
 </template>
@@ -63,7 +71,7 @@ export default {
 
 .actions {
   display: flex;
-  gap: 8px;
+  gap: 4px;
   flex-shrink: 0;
   padding: 4px 0;
 }
@@ -91,15 +99,6 @@ export default {
     color: #9ca3af;
     font-style: italic;
   }
-}
-
-.badge-lock {
-  font-size: 14px;
-  background: #fee2e2;
-  color: #b91c1c;
-  padding: 4px 10px;
-  border-radius: 6px;
-  margin-left: 10px;
 }
 
 @media (max-width: 640px) {

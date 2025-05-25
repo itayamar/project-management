@@ -223,11 +223,6 @@ export default {
     font-size: 18px;
     color: #4b5563;
   }
-
-  .actions {
-    display: flex;
-    gap: 12px;
-  }
 }
 
 .tasks-section {

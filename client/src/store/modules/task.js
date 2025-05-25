@@ -27,7 +27,8 @@ export default {
             page: 1,
             limit: 20,
             sortField: 'createdAt',
-            sortOrder: 'desc'
+            sortOrder: 'desc',
+            status: '',
         },
         lastActionId: null, // Track our last action
         lastActionIdTimeout: null // Track the timeout for lastActionId
@@ -87,7 +88,7 @@ export default {
         }
     },
     actions: {
-        async fetchTasks({ commit, state }, { projectId, page, limit, search, sortField,  sortOrder} = {}) {
+        async fetchTasks({ commit, state }, { projectId, page, limit, search, sortField,  sortOrder, status} = {}) {
             try {
                 commit('SET_LOADING', { type: 'tasks', value: true }, { root: true });
                 commit('SET_ERROR', null, { root: true });
@@ -98,7 +99,8 @@ export default {
                     limit: limit || state.filters.limit,
                     search: search !== undefined ? search : state.filters.search,
                     sortField: sortField || state.filters.sortField,
-                    sortOrder: sortOrder || state.filters.sortOrder
+                    sortOrder: sortOrder || state.filters.sortOrder,
+                    status: status || state.filters.status,
                 };
 
                 const data = await fetchTasks(
@@ -107,13 +109,14 @@ export default {
                     params.limit,
                     params.search,
                     params.sortField,
-                    params.sortOrder
+                    params.sortOrder,
+                    params.status
                 );
                 
                 commit('SET_TASKS', data.tasks);
                 commit('SET_TOTAL_TASKS', data.total);
                 commit('SET_TOTAL_TASKS', data.total);
-                commit('SET_TASK_COUNTS', data.counts);
+                commit('SET_TASK_COUNTS', {...data.counts, ALL: data.total});
             } catch (error) {
                 commit('SET_ERROR', error.message, { root: true });
             } finally {

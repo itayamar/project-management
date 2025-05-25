@@ -1,14 +1,14 @@
 <template>
   <div v-if="isOpen" class="dialog-overlay">
     <div class="dialog">
-      <div class="dialog-header">
-        <h2>
+      <header class="dialog-header">
+        <h2 id="dialog-title">
           <span class="dialog-icon primary">{{ project ? '✏️' : '📁' }}</span>
           {{ project ? 'Edit Project' : 'Create New Project' }}
         </h2>
-      </div>
+      </header>
 
-      <div class="dialog-content">
+      <section class="dialog-content">
         <form @submit.prevent="saveProject">
           <div class="form-group">
             <label for="name">Project Name</label>
@@ -26,7 +26,7 @@
             <label for="description">Project Description</label>
             <textarea
                 id="description"
-                v-model="localProject.description"
+                v-model.trim="localProject.description"
                 rows="4"
                 placeholder="Describe the project goals, scope, and key details..."
                 autocomplete="off"
@@ -35,22 +35,21 @@
 
           <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
         </form>
-      </div>
+      </section>
 
-      <div class="buttons">
+      <footer class="buttons">
         <button type="button" class="btn btn-secondary" @click="close">
           Cancel
         </button>
         <button
             type="submit"
             class="btn btn-primary"
-            :disabled="isBlocked || !localProject.name.trim() || (project && isUnchanged)"
-            :class="{ 'btn-disabled': !localProject.name.trim() || (project && isUnchanged) }"
-            @click="saveProject"
+            :disabled="isBlocked || !localProject.name || (project && isUnchanged)"
+            :class="{ 'btn-disabled': !localProject.name || (project && isUnchanged) }"
         >
           {{ project ? 'Save Changes' : 'Create Project' }}
         </button>
-      </div>
+      </footer>
     </div>
   </div>
 </template>
@@ -59,6 +58,7 @@
 import {mapState, mapActions} from "vuex";
 
 export default {
+  name: "ProjectModal",
   props: {
     project: {
       type: Object,
@@ -91,8 +91,8 @@ export default {
       if (!this.project) return false // it's create mode
 
       return (
-          this.localProject.name.trim() === this.project.name.trim() &&
-          this.localProject.description.trim() === (this.project.description || '').trim()
+          this.localProject.name === this.project.name &&
+          this.localProject.description === (this.project.description || '')
       )
     }
   },
@@ -107,11 +107,8 @@ export default {
       this.errorMessage = ''
     },
     isOpen(open) {
-      console.log('isOpen changed', this.localProject, this.projectIdForEditing)
-
       if (!this.projectIdForEditing) return;
       if (open) {
-        console.log('closing dialog', this.localProject)
         this.startEditingProject(this.projectIdForEditing);
       }
       else {
@@ -122,28 +119,25 @@ export default {
   },
   methods: {
     ...mapActions('project', ['startEditingProject','stopEditingProject']),
-    saveProject() {
-      if (!this.localProject.name.trim()) {
+    validate() {
+      if (!this.localProject.name) {
         this.errorMessage = 'Project name is required.'
-        return
+        return false
       }
-
-      if (this.localProject.name.trim().length < 2) {
+      if (this.localProject.name.length < 2) {
         this.errorMessage = 'Project name must be at least 2 characters long.'
-        return
+        return false
       }
-
-      if (this.localProject.name.trim().length > 100) {
+      if (this.localProject.name.length > 100) {
         this.errorMessage = 'Project name must be less than 100 characters.'
-        return
+        return false
       }
-
       this.errorMessage = ''
-      this.$emit('save', {
-        ...this.localProject,
-        name: this.localProject.name.trim(),
-        description: this.localProject.description.trim()
-      })
+      return true
+    },
+    saveProject() {
+      if (!this.validate()) return;
+      this.$emit('save', { ...this.localProject })
       this.close()
     },
     close() {

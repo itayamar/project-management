@@ -14,7 +14,7 @@
             @update:sortField="sortField = $event"
             @update:sortOrder="sortOrder = $event"
         />
-        <button class="btn-add" @click="openAddModal">
+        <button class="btn-add" @click="openProjectModal">
           <span class="icon-btn">+</span>
           <span class="text-btn">Add Project</span>
         </button>
@@ -42,7 +42,7 @@
       :empty-description="hasActiveFilters ? 'No projects match your current filters. Try adjusting your search or filter criteria.' : 'Get started by creating your first project to organize your tasks!'"
       :add-button-text="'Create Project'"
       @click="openProject"
-      @add="openAddModal"
+      @add="openProjectModal"
       @page-change="handlePageChange"
       @limit-change="handleLimitChange"
     >
@@ -50,7 +50,7 @@
         <project-card
           :project="project"
           @click="openProject(project)"
-          @edit="openEditModal(project)"
+          @edit="openProjectModal(project)"
           @delete="confirmDelete(project)"
         />
       </template>
@@ -194,14 +194,9 @@ export default {
       this.$router.push('/projects/' + project._id)
     },
 
-    openAddModal() {
-      this.selectedProject = null
-      this.isModalOpen = true
-    },
-
-    openEditModal(project) {
-      this.selectedProject = project
-      this.isModalOpen = true
+    openProjectModal(project = null) {
+      this.selectedProject = project;
+      this.isModalOpen = true;
     },
 
     closeModal() {
@@ -263,8 +258,6 @@ export default {
 </script>
 
 <style lang="less" scoped>
-@import '../../styles/main.less';
-
 .project-items {
   display: grid;
   gap: 1rem;

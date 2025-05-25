@@ -28,18 +28,9 @@
       :search-query="searchQuery"
       :counts="statusCountMap"
       search-placeholder="Search tasks..."
-      default-value="ALL"
-      :status-class-map="{
-        'OVERDUE': { 'tab-overdue': true },
-        'CREATED': { 'tab-created': true },
-        'IN_PROGRESS': { 'tab-progress': true },
-        'COMPLETED': { 'tab-completed': true },
-        'ARCHIVED': { 'tab-archived': true }
-      }"
       @search="handleSearch"
       @filter="filterTasks"
     />
-
     <data-table
       :items="tasks"
       :loading="isLoading('tasks')"
@@ -47,8 +38,8 @@
       :total-pages="totalTasksPages"
       :empty-icon="'✓'"
       :limit="this.limit"
-      :empty-title="currentFilter === 'ALL' ? 'No tasks yet' : `No ${statusFilters[currentFilter].toLowerCase()} tasks`"
-      :empty-description="currentFilter === 'ALL' ? 'Get started by creating your first task for this project' : 'Try selecting a different filter or create a new task'"
+      :empty-title="emptyTitle"
+      :empty-description="emptyDescription"
       :add-button-text="'Add Task'"
       :highlight-condition="isPastDue"
       @add="openCreateTaskModal"
@@ -116,17 +107,11 @@ export default {
       showTaskModal: false,
       showDeleteModal: false,
       isEditing: false,
-      currentFilter: 'ALL',
       taskToEdit: null,
       taskToDelete: null,
-      taskForm: {
-        state: 'CREATED',
-        dueDate: '',
-        notes: ''
-      },
       errors: {},
       statusFilters: {
-        ALL: 'All',
+        '' : 'All',
         OVERDUE: 'Overdue',
         CREATED: 'Created',
         IN_PROGRESS: 'In Progress',
@@ -153,6 +138,11 @@ export default {
       taskCounts: state => state.task.taskCounts,
       filters: state => state.task.filters,
     }),
+    ...mapGetters([
+      'isLoading',
+      'hasError',
+      'errorMessage'
+    ]),
     sortField: {
       get() {
         return this.filters.sortField;
@@ -178,19 +168,15 @@ export default {
     totalTasksPages() {
       return Math.ceil(this.totalTasks / this.limit)
     },
-    ...mapGetters([
-      'isLoading',
-      'hasError',
-      'errorMessage'
-    ]),
-    taskCountsByStatus() {
-      const overdueTasks = this.tasks.filter(t => this.isPastDue(t));
-      return {
-        OVERDUE: overdueTasks.length,
-        CREATED: this.tasks.filter(t => t.state === 'CREATED').length,
-        IN_PROGRESS: this.tasks.filter(t => t.state === 'IN_PROGRESS').length,
-        COMPLETED: this.tasks.filter(t => t.state === 'COMPLETED').length,
-        ARCHIVED: this.tasks.filter(t => t.state === 'ARCHIVED').length
+    currentFilter: {
+      get() {
+        return this.filters.status || '';
+      },
+      set(value) {
+        this.updateFilters({
+          projectId: this.projectId,
+          filters: { status: value }
+        });
       }
     },
     searchQuery: {
@@ -203,13 +189,22 @@ export default {
     },
     statusCountMap() {
       return {
-        ALL: this.totalTasks,
+        '': this.taskCounts.ALL,
         OVERDUE: this.taskCounts.OVERDUE || 0,
         CREATED: this.taskCounts.CREATED || 0,
         IN_PROGRESS: this.taskCounts.IN_PROGRESS || 0,
         COMPLETED: this.taskCounts.COMPLETED || 0,
         ARCHIVED: this.taskCounts.ARCHIVED || 0
-      };
+      }
+    },
+    emptyTitle() {
+      const label = this.statusFilters[this.currentFilter];
+      return label ? `No ${label.toLowerCase()} tasks` : 'No tasks yet'
+    },
+    emptyDescription() {
+      const label = this.statusFilters[this.currentFilter];
+      return label ? 'Try selecting a different filter or create a new task' :
+          'Get started by creating your first task for this project'
     }
   },
   created() {
@@ -277,48 +272,14 @@ export default {
 
       return dueDate < today
     },
-
-    getStatusClass(status) {
-      switch (status) {
-        case 'CREATED':
-          return 'badge-blue'
-        case 'IN_PROGRESS':
-          return 'badge-yellow'
-        case 'COMPLETED':
-          return 'badge-green'
-        case 'ARCHIVED':
-          return 'badge-gray'
-        default:
-          return 'badge-gray'
-      }
-    },
-
-    formatStatusLabel(status) {
-      return status.replace('_', ' ')
-    },
-
     openCreateTaskModal() {
       this.isEditing = false
-      const today = new Date().toISOString().split('T')[0]
-
-      this.taskForm = {
-        state: 'CREATED',
-        dueDate: today,
-        notes: ''
-      }
-
       this.showTaskModal = true
     },
 
     editTask(task) {
       this.isEditing = true
       this.taskToEdit = task
-
-      this.taskForm = {
-        state: task.state,
-        dueDate: new Date(task.dueDate).toISOString().split('T')[0],
-        notes: task.notes || ''
-      }
 
       this.showTaskModal = true
     },
@@ -363,7 +324,6 @@ export default {
 
     closeTaskModal() {
       this.showTaskModal = false
-      this.taskForm = { state: 'CREATED', dueDate: '', notes: '' }
       this.errors = {}
       this.taskToEdit = null
     },
@@ -371,21 +331,6 @@ export default {
     closeDeleteModal() {
       this.showDeleteModal = false
       this.taskToDelete = null
-    },
-
-    getStatusBgColor(state) {
-      switch (state) {
-        case 'CREATED':
-          return '#007bff'; // blue
-        case 'IN_PROGRESS':
-          return '#ffc107'; // yellow
-        case 'COMPLETED':
-          return '#28a745'; // green
-        case 'ARCHIVED':
-          return '#6c757d'; // gray
-        default:
-          return '#ccc';
-      }
     },
     handleStatusChange(task) {
       this.updateTask({
@@ -401,9 +346,6 @@ export default {
         console.error('Error updating task status:', err)
       })
     },
-    getTaskCountByStatus(status) {
-      return this.taskCountsByStatus[status] || 0
-    },
     handleSearch(value) {
       if (this.searchTimeout) {
         clearTimeout(this.searchTimeout);
@@ -418,21 +360,12 @@ export default {
         });
       }, 300);
     },
-    isTextTruncated(text) {
-      return text && text.length > 150;
-    },
-    toggleExpand(taskId) {
-      this.$set(this.expandedTasks, taskId, !this.expandedTasks[taskId]);
-    },
     checkStatusTabsScroll() {
       const tabsContainer = this.$el.querySelector('.status-tabs');
       if (tabsContainer) {
         const hasScroll = tabsContainer.scrollWidth > tabsContainer.clientWidth;
         tabsContainer.classList.toggle('has-scroll', hasScroll);
       }
-    },
-    toggleSort() {
-      this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
     }
   }
 }

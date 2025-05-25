@@ -2,14 +2,12 @@
   <div class="notifications" v-if="allNotifications.length">
     <transition-group name="notification">
       <div
-        v-for="notification in allNotifications"
-        :key="notification.timestamp"
-        :class="['notification', `notification-${notification.type}`, { 'auto-close': notification.autoClose }]"
+          v-for="notification in allNotifications"
+          :key="notification.timestamp"
+          :class="['notification', `notification-${notification.type}`, { 'auto-close': notification.autoClose }]"
       >
         <div class="notification-content">
-          <span class="notification-icon">
-            {{ getIcon(notification.type) }}
-          </span>
+          <span class="notification-icon">{{ getIcon(notification.type) }}</span>
           <span class="notification-message">{{ notification.message }}</span>
           <span class="notification-time">{{ formatTime(notification.timestamp) }}</span>
           <button class="close-btn" @click="dismissNotification(notification)">×</button>
@@ -26,7 +24,8 @@ export default {
   name: 'Notifications',
   data() {
     return {
-      dismissTimeout: 5000, // 5 seconds
+      dismissTimeout: 5000,
+      timeoutMap: new Map()
     };
   },
   computed: {
@@ -35,53 +34,53 @@ export default {
       taskNotifications: 'notifications/taskNotifications'
     }),
     allNotifications() {
-      // Combine and sort notifications from both modules
-      const combined = [
-        ...this.projectNotifications,
-        ...this.taskNotifications
-      ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-      return combined;
+      return [...this.projectNotifications, ...this.taskNotifications]
+          .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     }
   },
   methods: {
     ...mapMutations({
-      removeProjectNotification: 'notifications/REMOVE_NOTIFICATION',
-      removeTaskNotification: 'notifications/REMOVE_NOTIFICATION'
+      removeNotification: 'notifications/REMOVE_NOTIFICATION'
     }),
     getIcon(type) {
-      switch (type) {
-        case 'success': return '✅';
-        case 'error': return '❌';
-        case 'warning': return '⚠️';
-        case 'info': return 'ℹ️';
-        default: return '📢';
-      }
+      const icons = {
+        success: '✅',
+        error: '❌',
+        warning: '⚠️',
+        info: 'ℹ️'
+      };
+      return icons[type] || '📢';
     },
     formatTime(timestamp) {
-      if (!timestamp) return '';
       const date = new Date(timestamp);
-      return date.toLocaleTimeString();
+      return isNaN(date) ? '' : date.toLocaleTimeString();
     },
     dismissNotification(notification) {
-      // Remove notification from the appropriate list based on its type
-      this.removeProjectNotification({ type: notification.type === 'project' ? 'project' : 'task', notification });
+      const sourceType = this.projectNotifications.includes(notification) ? 'project' : 'task';
+      this.removeNotification({ type: sourceType, notification });
+      this.timeoutMap.delete(notification.timestamp);
+    },
+    scheduleAutoDismiss(notification) {
+      if (!notification.autoClose || this.timeoutMap.has(notification.timestamp)) return;
+
+      const timeoutId = setTimeout(() => {
+        this.dismissNotification(notification);
+      }, this.dismissTimeout);
+
+      this.timeoutMap.set(notification.timestamp, timeoutId);
     }
   },
   watch: {
     allNotifications: {
       handler(newNotifications) {
-        // Set auto-dismiss timer for new notifications with autoClose flag
-        newNotifications.forEach(notification => {
-          if (notification.autoClose) {
-            setTimeout(() => {
-              this.dismissNotification(notification);
-            }, this.dismissTimeout);
-          }
-        });
+        newNotifications.forEach(this.scheduleAutoDismiss);
       },
       deep: true
     }
+  },
+  beforeDestroy() {
+    this.timeoutMap.forEach(clearTimeout);
+    this.timeoutMap.clear();
   }
 };
 </script>
@@ -127,20 +126,17 @@ export default {
 }
 
 .close-btn {
-  background: none;
+  background: transparent;
   border: none;
-  color: #666;
-  font-size: 18px;
+  color: #888;
+  font-size: 16px;
   cursor: pointer;
-  padding: 4px;
+  padding: 0 6px;
   line-height: 1;
-  border-radius: 4px;
-  transition: all 0.2s ease;
 }
 
 .close-btn:hover {
-  background: rgba(0, 0, 0, 0.05);
-  color: #333;
+  color: #444;
 }
 
 .notification-success {
@@ -189,4 +185,4 @@ export default {
     transform: translateX(0);
   }
 }
-</style> 
+</style>

@@ -14,18 +14,37 @@ router
             const limit = parseInt(req.query.limit) || 20;
             const skip = (page - 1) * limit;
 
-            const filter = {};
-            if (req.query.projectId) {
-                filter.projectId = new mongoose.Types.ObjectId(req.query.projectId);
+            const { sortField, sortOrder, projectId, status, search } = req.query;
+
+            const match = {};
+
+            if (projectId) {
+                match.projectId = new mongoose.Types.ObjectId(projectId);
             }
 
-            const pipeline = [
-                { $match: filter }
-            ];
+            if (status && status !== 'OVERDUE') {
+                match.state = status.toUpperCase();
+            }
 
-            const { sortField, sortOrder } = req.query;
+            if (search) {
+                match.$or = [
+                    { description: { $regex: search, $options: 'i' } },
+                    { notes: { $regex: search, $options: 'i' } }
+                ];
+            }
 
-            // Add sorting
+            const pipeline = [{ $match: match }];
+
+            // Handle special "OVERDUE" case
+            if (status === 'OVERDUE') {
+                pipeline.push({
+                    $match: {
+                        dueDate: { $lt: new Date() },
+                        state: { $nin: ['COMPLETED', 'ARCHIVED'] }
+                    }
+                });
+            }
+
             const allowedSortFields = ['dueDate', 'createdAt', 'updatedAt'];
             if (sortField && allowedSortFields.includes(sortField)) {
                 pipeline.push({
@@ -35,22 +54,25 @@ router
                 });
             }
 
-            // Get total count before pagination
             const countPipeline = [...pipeline];
-            const [countResult] = await Task.aggregate([...countPipeline, { $count: "total" }]);
+            const [countResult] = await Task.aggregate([...countPipeline, { $count: 'total' }]);
             const total = countResult ? countResult.total : 0;
 
-            // Get status counts for the current project
+            // Status counts by state (for sidebar/filter info)
+            const statusFilterMatch = projectId
+                ? { projectId: new mongoose.Types.ObjectId(projectId) }
+                : {};
+
             const countsByStatus = await Task.aggregate([
-                { $match: { projectId: new mongoose.Types.ObjectId(req.query.projectId) } },
+                { $match: statusFilterMatch },
                 {
                     $addFields: {
                         isOverdue: {
                             $and: [
-                                { $lt: ["$dueDate", new Date()] },
-                                { 
-                                    $not: { 
-                                        $in: ["$state", ["COMPLETED", "ARCHIVED"]] 
+                                { $lt: ['$dueDate', new Date()] },
+                                {
+                                    $not: {
+                                        $in: ['$state', ['COMPLETED', 'ARCHIVED']]
                                     }
                                 }
                             ]
@@ -59,21 +81,20 @@ router
                 },
                 {
                     $group: {
-                        _id: "$state",
+                        _id: '$state',
                         count: { $sum: 1 },
-                        overdue: { $sum: { $cond: ["$isOverdue", 1, 0] } }
+                        overdue: { $sum: { $cond: ['$isOverdue', 1, 0] } }
                     }
                 },
                 {
                     $group: {
                         _id: null,
-                        stateCounts: { $push: { state: "$_id", count: "$count" } },
-                        totalOverdue: { $sum: "$overdue" }
+                        stateCounts: { $push: { state: '$_id', count: '$count' } },
+                        totalOverdue: { $sum: '$overdue' }
                     }
                 }
             ]);
 
-            // Convert array of counts to object
             const stateCountsObj = (countsByStatus[0]?.stateCounts || []).reduce((acc, { state, count }) => {
                 acc[state] = count;
                 return acc;
@@ -89,11 +110,11 @@ router
                 OVERDUE: countsByStatus[0]?.totalOverdue || 0
             };
 
-            // Add pagination
+            // Pagination
             pipeline.push(
                 { $skip: skip },
                 { $limit: limit },
-                { 
+                {
                     $project: {
                         description: 1,
                         state: 1,
@@ -108,11 +129,8 @@ router
 
             const tasks = await Task.aggregate(pipeline);
 
-            res.send({ 
-                tasks, 
-                total,
-                counts
-            });
+            res.send({ tasks, total, counts });
+
         } catch (err) {
             next(err);
         }

@@ -1,14 +1,14 @@
 <template>
   <div v-if="isOpen" class="dialog-overlay">
     <div class="dialog">
-      <div class="dialog-header">
+      <header class="dialog-header">
         <h2>
           <span class="dialog-icon primary">{{ task ? '✏️' : '➕' }}</span>
           {{ task ? 'Edit Task' : 'Add New Task' }}
         </h2>
-      </div>
+      </header>
 
-      <div class="dialog-content">
+      <section class="dialog-content">
         <form @submit.prevent="saveTask">
           <div class="form-group">
             <label for="description">Task Description</label>
@@ -54,9 +54,9 @@
 
           <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
         </form>
-      </div>
+      </section>
 
-      <div class="buttons">
+      <footer class="buttons">
         <button type="button" class="btn btn-secondary" @click="close">
           Cancel
         </button>
@@ -69,7 +69,7 @@
         >
           {{ task ? 'Save Changes' : 'Create Task' }}
         </button>
-      </div>
+      </footer>
     </div>
   </div>
 </template>
@@ -162,19 +162,17 @@ export default {
     }
   },
   methods: {
-    saveTask() {
-      // Validation
+    validateTask() {
       if (!this.localTask.description.trim()) {
         this.errorMessage = 'Task description is required.';
-        return;
+        return false;
       }
 
       if (!this.localTask.dueDate) {
         this.errorMessage = 'Due date is required.';
-        return;
+        return false;
       }
 
-      // Check if due date is in the past (only for new tasks or when changing due date)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const dueDate = new Date(this.localTask.dueDate);
@@ -182,8 +180,14 @@ export default {
 
       if (dueDate < today && (!this.task || this.localTask.dueDate !== this.originalTask?.dueDate)) {
         this.errorMessage = 'Due date cannot be in the past.';
-        return;
+        return false;
       }
+
+      this.errorMessage = '';
+      return true;
+    },
+    saveTask() {
+      if (!this.validateTask()) return;
 
       const payload = {
         ...this.localTask,
@@ -191,7 +195,6 @@ export default {
         projectId: this.projectId
       };
 
-      this.errorMessage = '';
       this.$emit('submit', payload);
       this.close();
     },

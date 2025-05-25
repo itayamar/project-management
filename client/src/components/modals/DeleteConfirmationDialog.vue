@@ -18,9 +18,9 @@
           <div class="item-type">{{ typeLabel }}</div>
         </div>
 
-        <div v-if="hasRelatedTasks" class="warning-message">
+        <p v-if="hasRelatedTasks" class="warning-message">
           {{ relatedTasksWarning }}
-        </div>
+        </p>
       </div>
 
       <div class="buttons">
@@ -37,6 +37,7 @@
 
 <script>
 export default {
+  name: 'DeleteConfirmationDialog',
   props: {
     isOpen: {
       type: Boolean,
@@ -66,7 +67,8 @@ export default {
       if (!this.hasRelatedTasks) return ''
 
       const taskWord = this.item.taskCount === 1 ? 'task' : 'tasks'
-      return `Note: This project contains ${this.item.taskCount} ${taskWord}. Deleting the project will also delete all associated tasks.`
+      return `Warning: This project contains ${this.item.taskCount} ${taskWord}.
+       Deleting it will also remove all associated tasks.`
     }
   },
   methods: {

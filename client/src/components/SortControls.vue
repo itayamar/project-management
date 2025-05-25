@@ -7,7 +7,7 @@
       </option>
     </select>
     <button
-        class="btn btn-sort"
+        class="btn icon-btn"
         @click="toggleSort"
         :title="sortOrder === 'asc' ? 'Showing oldest first' : 'Showing newest first'"
     >
@@ -85,31 +85,13 @@ export default {
   color: #1f2937;
   padding: 4px 8px;
   cursor: pointer;
-
-  &:hover {
-    color: #2563eb;
-  }
 }
 
-.btn-sort {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  background: #f9fafb;
-  color: #6b7280;
-  cursor: pointer;
-  border: none;
+.sort-select:hover {
+  color: #2563eb;
+}
 
-  &:hover {
-    background: #f3f4f6;
-    color: #2563eb;
-  }
-
-  .sort-icon {
-    font-size: 14px;
-  }
+.sort-icon {
+  font-size: 14px;
 }
 </style>

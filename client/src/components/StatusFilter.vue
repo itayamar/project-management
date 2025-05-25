@@ -1,26 +1,26 @@
 <template>
   <div class="filters-section">
     <div class="search-box">
-      <input 
-        type="text" 
-        :value="searchQuery"
-        @input="$emit('search', $event.target.value)"
-        :placeholder="searchPlaceholder"
+      <input
+          type="text"
+          :value="searchQuery"
+          @input="$emit('search', $event.target.value)"
+          :placeholder="searchPlaceholder"
       >
     </div>
-    
+
     <!-- Desktop tabs -->
     <div class="status-tabs desktop-only">
       <button
-        v-for="(label, value) in statusFilters"
-        :key="value"
-        class="status-tab"
-        :class="{
-          'active': currentStatus === value,
-          'tab-all': value === defaultValue,
-          ...getStatusClass(value)
-        }"
-        @click="$emit('filter', value)"
+          role="tab"
+          :aria-pressed="currentStatus === value"
+          :aria-label="`Filter by status: ${label}`"
+          v-for="(label, value) in statusFilters"
+          :key="value"
+          class="status-tab"
+          :class="{ active: currentStatus === value, 'tab-all': value === defaultValue }"
+          :data-status="value"
+          @click="$emit('filter', value)"
       >
         <span class="status-icon" v-if="value !== defaultValue">●</span>
         {{ label }}
@@ -32,17 +32,17 @@
 
     <!-- Mobile select -->
     <div class="status-select-mobile mobile-only">
-      <select 
-        :value="currentStatus"
-        @change="$emit('filter', $event.target.value)"
-        class="mobile-filter-select"
+      <select
+          :value="currentStatus"
+          @change="$emit('filter', $event.target.value)"
+          class="mobile-filter-select"
       >
         <option
-          v-for="(label, value) in statusFilters"
-          :key="value"
-          :value="value"
+            v-for="(label, value) in statusFilters"
+            :key="value"
+            :value="value"
         >
-          {{ label }}{{ counts && counts[value] !== undefined ? ` (${counts[value]})` : '' }}
+          {{ getLabelWithCount(label, value) }}
         </option>
       </select>
       <span class="select-icon">▼</span>
@@ -74,10 +74,6 @@ export default {
       type: String,
       default: ''
     },
-    statusClassMap: {
-      type: Object,
-      default: () => ({})
-    },
     counts: {
       type: Object,
       default: null
@@ -85,7 +81,11 @@ export default {
   },
   methods: {
     getStatusClass(status) {
-      return this.statusClassMap[status] || {};
+      return status && status !== this.defaultValue ? { [`tab-${status}`]: true } : {};
+    },
+    getLabelWithCount(label, value) {
+      const count = this.counts?.[value];
+      return count !== undefined ? `${label} (${count})` : label;
     }
   }
 }
@@ -133,7 +133,7 @@ export default {
   scrollbar-width: none;
   position: relative;
   border-bottom: 1px solid #e5e7eb;
-  
+
   &::-webkit-scrollbar {
     display: none;
   }
@@ -180,9 +180,9 @@ export default {
   }
 
   &.tab-all {
-    &.active { 
+    &.active {
       color: #111827;
-      
+
       .count {
         background: #e5e7eb;
         color: #111827;
@@ -190,35 +190,35 @@ export default {
     }
   }
 
-  &.tab-created {
+  &[data-status='created'] {
     .status-icon { color: #2563eb; }
-    &.active .count { 
-      background: #eff6ff; 
-      color: #1e40af; 
+    &.active .count {
+      background: #eff6ff;
+      color: #1e40af;
     }
   }
 
-  &.tab-progress {
+  &[data-status='progress'] {
     .status-icon { color: #f59e0b; }
-    &.active .count { 
-      background: #fef3c7; 
-      color: #92400e; 
+    &.active .count {
+      background: #fef3c7;
+      color: #92400e;
     }
   }
 
-  &.tab-completed {
+  &[data-status='completed'] {
     .status-icon { color: #10b981; }
-    &.active .count { 
-      background: #d1fae5; 
-      color: #065f46; 
+    &.active .count {
+      background: #d1fae5;
+      color: #065f46;
     }
   }
 
-  &.tab-archived {
+  &[data-status='archived'] {
     .status-icon { color: #6b7280; }
-    &.active .count { 
-      background: #f3f4f6; 
-      color: #374151; 
+    &.active .count {
+      background: #f3f4f6;
+      color: #374151;
     }
   }
 }
@@ -285,11 +285,11 @@ export default {
     background: white;
     border-bottom: 1px solid #e5e7eb;
     padding: 16px;
-    
+
     .search-box {
       margin: 0;
       margin-bottom: 12px;
-      
+
       input {
         border-radius: 6px;
       }

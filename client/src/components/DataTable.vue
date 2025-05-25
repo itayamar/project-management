@@ -1,21 +1,25 @@
 <template>
   <div class="data-table">
     <!-- Loading State -->
-    <div v-if="loading" class="empty-state">
-      <skelaton-loader :lines="4" type="card" />
-    </div>
+    <slot name="loading" v-if="loading">
+      <div class="empty-state">
+        <skelaton-loader :lines="4" type="card" />
+      </div>
+    </slot>
 
     <!-- Empty State -->
-    <div v-else-if="items.length === 0" class="empty-state">
-      <div class="empty-state-content">
-        <span class="empty-icon">{{ emptyIcon }}</span>
-        <h3>{{ emptyTitle }}</h3>
-        <p>{{ emptyDescription }}</p>
-        <button v-if="showAddButton" class="btn btn-primary" @click="$emit('add')">
-          {{ addButtonText }}
-        </button>
+    <slot name="empty" v-else-if="items.length === 0">
+      <div class="empty-state">
+        <div class="empty-state-content">
+          <span class="empty-icon">{{ emptyIcon }}</span>
+          <h3>{{ emptyTitle }}</h3>
+          <p>{{ emptyDescription }}</p>
+          <button v-if="showAddButton" class="btn btn-primary" @click="$emit('add')">
+            {{ addButtonText }}
+          </button>
+        </div>
       </div>
-    </div>
+    </slot>
 
     <!-- Table Content -->
     <div v-else class="table-content">

@@ -26,7 +26,7 @@
         </div>
         <div class="limit-selector">
           <span class="page-label">Items per page</span>
-          <select v-model.number="selectedLimit" :key="selectedLimit" @change="updateLimit" class="page-select">
+          <select v-model.number="selectedLimit" @change="updateLimit" class="page-select">
             <option v-for="option in limitOptions" :key="option" :value="option">
               {{ option }}
             </option>
@@ -74,11 +74,15 @@ export default {
   },
   watch: {
     currentPage(newVal) {
-      this.selectedPage = newVal;
+      if (this.selectedPage !== newVal) {
+        this.selectedPage = newVal;
+      }
     },
     limit(newVal) {
-      this.selectedLimit = newVal;
-    },
+      if (this.selectedLimit !== newVal) {
+        this.selectedLimit = newVal;
+      }
+    }
   },
   methods: {
     goToPage() {
@@ -86,7 +90,8 @@ export default {
     },
     updateLimit() {
       this.$emit('limit-change', this.selectedLimit);
-    },
+      this.$emit('page-change', 1);
+    }
   },
 };
 </script>
@@ -114,6 +119,7 @@ export default {
   }
 }
 
+/* Reusable pagination button styles */
 .pagination-btn {
   display: inline-flex;
   align-items: center;
@@ -174,6 +180,7 @@ export default {
   }
 }
 
+/* Page info layout */
 .page-info {
   display: flex;
   align-items: center;
@@ -194,6 +201,7 @@ export default {
   font-size: 13px;
 }
 
+/* Reusable page select styles */
 .page-select {
   padding: 6px 12px;
   border-radius: 6px;
@@ -228,6 +236,7 @@ export default {
   }
 }
 
+/* Limit selector inherits page-select styles */
 .limit-selector {
   display: flex;
   align-items: center;
@@ -240,33 +249,6 @@ export default {
     font-weight: 500;
     font-size: 13px;
   }
-
-  .page-select {
-    padding: 6px 12px;
-    border-radius: 6px;
-    border: 1px solid #d1d5db;
-    font-size: 14px;
-    color: #111827;
-    font-weight: 600;
-    cursor: pointer;
-    min-width: 50px;
-    appearance: none;
-    background: white url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%234B5563' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E")
-    no-repeat right 8px center/12px;
-    padding-right: 28px;
-
-    &:hover {
-      border-color: #9ca3af;
-      background-color: #f9fafb;
-    }
-
-    &:focus {
-      outline: none;
-      border-color: #2563eb;
-      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
-      background-color: white;
-    }
-  }
 }
 
 .page-total {
@@ -275,7 +257,8 @@ export default {
   font-size: 13px;
 }
 
-// Mobile responsive design
+/* Responsive */
+
 @media (max-width: 640px) {
   .pagination-container {
     margin: 1.5rem -16px 1rem;
@@ -323,7 +306,6 @@ export default {
   }
 }
 
-// Very small screens
 @media (max-width: 480px) {
   .pagination-bar {
     padding: 12px;
