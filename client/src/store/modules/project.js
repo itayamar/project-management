@@ -9,7 +9,6 @@ export default {
   state: {
     projects: [],
     currentViewedProjectId: null, // Single source of truth for current project
-    totalProjects: 0,
     editingProjectIds: [],
     projectCounts: {
       in_progress: 0,
@@ -33,9 +32,6 @@ export default {
     },
     SET_PROJECT_COUNTS(state, counts) {
       state.projectCounts = counts;
-    },
-    SET_TOTAL_PROJECTS(state, total) {
-      state.totalProjects = total;
     },
     ADD_PROJECT(state, project) {
       state.projects.unshift(project);
@@ -107,8 +103,7 @@ export default {
         });
         
         commit('SET_PROJECTS', projectsData.projects);
-        commit('SET_TOTAL_PROJECTS', projectsData.total);
-        commit('SET_PROJECT_COUNTS', projectsData.counts);
+        commit('SET_PROJECT_COUNTS', ...projectsData.counts);
       } catch (error) {
         commit('SET_ERROR', error.message, { root: true });
       } finally {

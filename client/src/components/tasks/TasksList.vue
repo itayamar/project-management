@@ -134,7 +134,6 @@ export default {
   computed: {
     ...mapState({
       tasks: state => state.task.tasks,
-      totalTasks: state => state.task.totalTasks,
       taskCounts: state => state.task.taskCounts,
       filters: state => state.task.filters,
     }),
@@ -143,6 +142,9 @@ export default {
       'hasError',
       'errorMessage'
     ]),
+    totalTasks () {
+      return this.taskCounts.total
+    },
     sortField: {
       get() {
         return this.filters.sortField;

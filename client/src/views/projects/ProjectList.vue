@@ -114,7 +114,6 @@ export default {
   computed: {
     ...mapState({
       projects: state => state.project.projects,
-      totalProjects: state => state.project.totalProjects,
       filters: state => state.project.filters,
       projectCounts: state => state.project.projectCounts
     }),
@@ -125,7 +124,7 @@ export default {
     ]),
     statusCountMap() {
       return {
-        '': this.totalProjects || 0,
+        '': this.projectCounts?.total || 0,
         'in_progress': this.projectCounts?.in_progress || 0,
         'completed': this.projectCounts?.completed || 0
       };

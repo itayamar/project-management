@@ -105,9 +105,16 @@ router
                 ARCHIVED: 0
             });
 
+            const allMatch = {};
+            if (projectId) {
+                allMatch.projectId = new mongoose.Types.ObjectId(projectId);
+            }
+            const totalAll = await Task.countDocuments(allMatch);
+
             const counts = {
                 ...stateCountsObj,
-                OVERDUE: countsByStatus[0]?.totalOverdue || 0
+                OVERDUE: countsByStatus[0]?.totalOverdue || 0,
+                ALL: totalAll
             };
 
             // Pagination
